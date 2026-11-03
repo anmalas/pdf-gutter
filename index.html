@@ -110,6 +110,17 @@
   .files button:disabled { opacity: .3; }
   .filefoot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 10px; font-size: 14px; color: var(--muted); }
   .filefoot .check[hidden] { display: none; }
+  .files .thumb {
+    flex: none; width: 30px; height: 30px; border-radius: 3px; object-fit: cover;
+    border: 1px solid var(--line); background: var(--paper);
+  }
+  .files .thumb.pdf { display: grid; place-items: center; font-size: 10px; font-weight: 600; color: var(--muted); }
+  .imgopts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .imgopts[hidden] { display: none; }
+  .imgopts select {
+    margin-left: 6px; font: inherit; color: var(--ink); background: var(--sheet);
+    border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px;
+  }
   .linkbtn { margin-left: auto; background: none; border: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; cursor: pointer; }
 
   /* 미리보기 */
@@ -262,20 +273,32 @@
 <body>
 <main>
   <h1>제본 여백 넣기</h1>
-  <p class="lead">PDF 페이지 크기는 그대로 두고 내용을 옮겨서 제본 쪽 여백을 늘립니다. 반대쪽 여백이 그만큼 줄어들고, 잘리는 내용이 걱정되면 축소해서 맞출 수 있습니다. 여러 PDF를 원하는 순서로 합치고, 페이지 번호도 함께 넣을 수 있습니다.</p>
+  <p class="lead">PDF 페이지 크기는 그대로 두고 내용을 옮겨서 제본 쪽 여백을 늘립니다. 반대쪽 여백이 그만큼 줄어들고, 잘리는 내용이 걱정되면 축소해서 맞출 수 있습니다. 여러 PDF와 이미지를 원하는 순서로 합치고, 페이지 번호도 함께 넣을 수 있습니다.</p>
 
   <label class="drop" id="drop">
-    <input type="file" id="file" accept="application/pdf,.pdf" multiple>
-    <span class="pick">PDF 추가</span>
-    <span class="hint" id="fileName">또는 여기로 끌어다 놓기. 여러 개를 넣으면 순서대로 합칩니다.</span>
+    <input type="file" id="file" accept="application/pdf,.pdf,image/*" multiple>
+    <span class="pick">파일 추가</span>
+    <span class="hint" id="fileName">PDF나 이미지(JPG, PNG 등)를 고르거나 여기로 끌어다 놓기. 여러 개를 넣으면 순서대로 합칩니다.</span>
   </label>
 
   <div class="filebox" id="filebox" hidden>
     <ol class="files" id="fileList" aria-label="합칠 파일 순서"></ol>
     <div class="filefoot">
       <span id="fileSummary"></span>
-      <label class="check" id="oddStartField"><input type="checkbox" id="oddStart">각 파일을 홀수 쪽에서 시작 (빈 쪽 추가)</label>
+      <label class="check" id="oddStartField"><input type="checkbox" id="oddStart">각 파일을 홀수 쪽에서 시작 (빈 쪽 추가, 연속된 이미지는 한 묶음)</label>
       <button type="button" class="linkbtn" id="clearFiles">모두 빼기</button>
+    </div>
+    <div class="imgopts" id="imgOptions" hidden>
+      <label>이미지 쪽 크기
+        <select id="imgPage">
+          <option value="pdf">함께 넣은 PDF와 같게 (없으면 A4)</option>
+          <option value="a4">A4 (210×297mm)</option>
+          <option value="b5">B5 (182×257mm)</option>
+          <option value="a5">A5 (148×210mm)</option>
+          <option value="letter">Letter (216×279mm)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="imgLandscape">가로 이미지는 가로 페이지로</label>
     </div>
   </div>
 
@@ -386,6 +409,7 @@
     <p>파일은 서버로 올라가지 않고 이 브라우저 안에서만 처리됩니다.</p>
     <p>노란 영역은 새로 생긴 제본 여백입니다. 축소할 때는 내용이 제본 반대쪽과 위아래로도 고르게 줄어듭니다.</p>
     <p>여러 파일을 합칠 때 책갈피(목차)는 옮겨지지 않습니다.</p>
+    <p>이미지는 비율을 유지한 채 페이지 가운데에 꽉 차게 들어갑니다. 휴대폰 사진의 회전 정보도 반영합니다.</p>
     <p>페이지 번호는 제본 여백을 뺀 영역을 기준으로, 가장자리에서 지정한 거리만큼 떨어진 곳에 넣습니다.</p>
   </div>
 </main>
@@ -780,36 +804,108 @@
   let fileSeq = 0;
   state.files = [];   // { id, file, bytes, pages }
 
+  const isPdf = (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+  const isImage = (f) => f.type.startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|avif|heic|heif|tiff?)$/i.test(f.name);
+
   async function addFiles(list) {
-    const pdfs = [...list].filter(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
-    if (!pdfs.length) { setStatus("PDF 파일만 넣을 수 있습니다.", true); return; }
+    const files = [...list].filter(f => isPdf(f) || isImage(f));
+    if (!files.length) { setStatus("PDF나 이미지 파일만 넣을 수 있습니다.", true); return; }
     setStatus("불러오는 중…");
     const failed = [];
-    for (const f of pdfs) {
+    for (const f of files) {
       try {
-        const bytes = new Uint8Array(await f.arrayBuffer());
-        const doc = await PDFLib.PDFDocument.load(bytes);
-        state.files.push({ id: ++fileSeq, file: f, bytes, pages: doc.getPageCount() });
+        state.files.push(isPdf(f) ? await loadPdfItem(f) : await loadImageItem(f));
       } catch (err) {
         console.error(err);
-        failed.push(f.name + (/encrypt/i.test(String(err)) ? " (암호 걸림)" : ""));
+        failed.push(f.name + (/encrypt/i.test(String(err)) ? " (암호 걸림)" : isImage(f) ? " (이 브라우저가 지원하지 않는 이미지 형식)" : ""));
       }
     }
     await filesChanged();
     if (failed.length) setStatus(`다음 파일은 읽지 못해 빼두었습니다: ${failed.map(escapeHtml).join(", ")}`, true);
   }
 
+  async function loadPdfItem(f) {
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const doc = await PDFLib.PDFDocument.load(bytes);
+    const first = doc.getPage(0).getSize();
+    return { id: ++fileSeq, kind: "pdf", file: f, bytes, pages: doc.getPageCount(), size: [first.width, first.height] };
+  }
+
+  // 이미지는 PDF에 넣을 수 있는 JPG/PNG 바이트와 크기로 준비
+  // JPG·PNG는 원본 그대로 넣고, 그 밖의 형식이나 방향(EXIF) 정보가 있는 사진은 브라우저로 다시 그려서 변환
+  async function loadImageItem(f) {
+    const raw = new Uint8Array(await f.arrayBuffer());
+    const bmp = await createImageBitmap(new Blob([raw], { type: f.type || "" }));
+    const w = bmp.width, h = bmp.height;
+    const isJpg = raw[0] === 0xff && raw[1] === 0xd8;
+    const isPng = raw[0] === 0x89 && raw[1] === 0x50 && raw[2] === 0x4e && raw[3] === 0x47;
+    let bytes = raw, type = isJpg ? "jpg" : "png";
+    if (!(isPng || (isJpg && jpegOrientation(raw) === 1))) {
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(bmp, 0, 0);
+      const mime = isJpg ? "image/jpeg" : "image/png";
+      const blob = await new Promise(res => canvas.toBlob(res, mime, 0.95));
+      if (!blob) throw new Error("이미지 변환 실패");
+      bytes = new Uint8Array(await blob.arrayBuffer());
+    }
+    bmp.close();
+    return { id: ++fileSeq, kind: "image", file: f, bytes, imgType: type, w, h, pages: 1, thumb: URL.createObjectURL(f) };
+  }
+
+  // JPG의 EXIF 방향 값 (없으면 1)
+  function jpegOrientation(b) {
+    const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    let i = 2;
+    while (i + 4 < b.length) {
+      if (b[i] !== 0xff) return 1;
+      const marker = b[i + 1], len = v.getUint16(i + 2);
+      if (marker === 0xe1 && v.getUint32(i + 4) === 0x45786966) {   // "Exif"
+        const t = i + 10, le = v.getUint16(t) === 0x4949;
+        const u16 = (o) => v.getUint16(t + o, le), u32 = (o) => v.getUint32(t + o, le);
+        const ifd = u32(4), n = u16(ifd);
+        for (let k = 0; k < n; k++) {
+          const e = ifd + 2 + k * 12;
+          if (u16(e) === 0x0112) return u16(e + 8) || 1;
+        }
+        return 1;
+      }
+      if (marker === 0xda) return 1;
+      i += 2 + len;
+    }
+    return 1;
+  }
+
+  const PAPER = { a4: [595.28, 841.89], b5: [515.91, 728.5], a5: [419.53, 595.28], letter: [612, 792] };
+  // 이미지 쪽의 페이지 크기
+  function imagePageSize(item) {
+    let [pw, ph] = PAPER[$("imgPage").value] || (state.files.find(f => f.kind === "pdf") || {}).size || PAPER.a4;
+    const portrait = ph >= pw;
+    if ($("imgLandscape").checked && item.w > item.h && portrait) [pw, ph] = [ph, pw];
+    return [pw, ph];
+  }
+
   // 목록 순서대로 하나의 PDF로 합침
   async function mergeFiles() {
     const files = state.files;
-    if (files.length === 1 && !needsBlank()) return files[0].bytes;
+    if (files.length === 1 && files[0].kind === "pdf") return files[0].bytes;
     const { PDFDocument } = PDFLib;
     const out = await PDFDocument.create();
     for (const [k, item] of files.entries()) {
-      if (k > 0 && $("oddStart").checked && out.getPageCount() % 2 === 1) {
+      // 새 단원 시작: PDF 파일마다, 그리고 연속된 이미지 묶음의 첫 장
+      const newSection = item.kind === "pdf" || (k > 0 && files[k - 1].kind === "pdf");
+      if (k > 0 && newSection && $("oddStart").checked && out.getPageCount() % 2 === 1) {
         const last = out.getPage(out.getPageCount() - 1);
         const { width, height } = last.getSize();
         out.addPage([width, height]);
+      }
+      if (item.kind === "image") {
+        const img = item.imgType === "jpg" ? await out.embedJpg(item.bytes) : await out.embedPng(item.bytes);
+        const [pw, ph] = imagePageSize(item);
+        const s = Math.min(pw / item.w, ph / item.h);
+        const w = item.w * s, h = item.h * s;
+        out.addPage([pw, ph]).drawImage(img, { x: (pw - w) / 2, y: (ph - h) / 2, width: w, height: h });
+        continue;
       }
       const src = await PDFDocument.load(item.bytes);
       const copied = await out.copyPages(src, src.getPageIndices());
@@ -817,7 +913,6 @@
     }
     return out.save();
   }
-  const needsBlank = () => state.files.length > 1 && $("oddStart").checked;
 
   let mergeToken = 0;
   async function filesChanged() {
@@ -854,9 +949,10 @@
     const ol = $("fileList");
     $("filebox").hidden = !state.files.length;
     $("oddStartField").hidden = state.files.length < 2;
+    $("imgOptions").hidden = !state.files.some(f => f.kind === "image");
     $("fileName").textContent = state.files.length
       ? "파일을 더 넣으면 목록 끝에 붙습니다. 순서는 끌어서 바꿀 수 있습니다."
-      : "또는 여기로 끌어다 놓기. 여러 개를 넣으면 순서대로 합칩니다.";
+      : "PDF나 이미지(JPG, PNG 등)를 고르거나 여기로 끌어다 놓기. 여러 개를 넣으면 순서대로 합칩니다.";
     ol.innerHTML = "";
     state.files.forEach((item, i) => {
       const li = document.createElement("li");
@@ -865,8 +961,9 @@
       li.innerHTML = `
         <span class="grip" aria-hidden="true">⋮⋮</span>
         <span class="idx">${i + 1}</span>
+        ${item.kind === "image" ? `<img class="thumb" src="${item.thumb}" alt="">` : `<span class="thumb pdf" aria-hidden="true">PDF</span>`}
         <span class="fname" title="${escapeHtml(item.file.name)}">${escapeHtml(item.file.name)}</span>
-        <span class="fpages">${item.pages}쪽</span>
+        <span class="fpages">${item.kind === "image" ? "이미지" : item.pages + "쪽"}</span>
         <button type="button" data-act="up" aria-label="${escapeHtml(item.file.name)} 위로" ${i === 0 ? "disabled" : ""}>↑</button>
         <button type="button" data-act="down" aria-label="${escapeHtml(item.file.name)} 아래로" ${i === state.files.length - 1 ? "disabled" : ""}>↓</button>
         <button type="button" data-act="remove" aria-label="${escapeHtml(item.file.name)} 빼기">✕</button>`;
@@ -890,7 +987,7 @@
     let changed = false;
     if (act === "up") changed = moveFile(i, i - 1);
     if (act === "down") changed = moveFile(i, i + 1);
-    if (act === "remove") { state.files.splice(i, 1); changed = true; }
+    if (act === "remove") { revokeThumb(state.files[i]); state.files.splice(i, 1); changed = true; }
     if (changed) {
       state.spread = 0;
       filesChanged().then(() => {
@@ -940,7 +1037,9 @@
   list.addEventListener("dragend", () => { clearMarks(); dragId = null; });
 
   $("oddStart").addEventListener("change", () => filesChanged());
-  $("clearFiles").addEventListener("click", () => { state.files = []; filesChanged(); });
+  $("clearFiles").addEventListener("click", () => { state.files.forEach(revokeThumb); state.files = []; filesChanged(); });
+  function revokeThumb(item) { if (item && item.thumb) URL.revokeObjectURL(item.thumb); }
+  ["imgPage", "imgLandscape"].forEach(id => $(id).addEventListener("change", () => filesChanged()));
 
   fileInput.addEventListener("change", () => { addFiles(fileInput.files); fileInput.value = ""; });
   ["dragenter", "dragover"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("over"); }));
@@ -966,7 +1065,7 @@
     try {
       const out = state.dirty || !state.outBytes ? await addGutter(state.srcBytes.slice(0), settings()) : state.outBytes;
       const url = URL.createObjectURL(new Blob([out], { type: "application/pdf" }));
-      const base = state.file.name.replace(/\.pdf$/i, "");
+      const base = state.file.name.replace(/\.[^.]+$/, "");
       const name = state.files.length > 1 ? `${base}_외${state.files.length - 1}개_합본.pdf` : `${base}_제본여백.pdf`;
       const a = document.createElement("a");
       a.href = url; a.download = name;
