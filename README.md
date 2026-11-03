@@ -1,2 +1,2 @@
-# pdf-bookbind-margin
+# pdf-gutter
 add bookbind margin on pdf file
