@@ -83,6 +83,35 @@
   .drop .hint { color: var(--muted); font-size: 15px; word-break: break-all; }
   .drop .hint.has { color: var(--ink); }
 
+  /* 파일 목록 */
+  .filebox { margin-top: 12px; }
+  .filebox[hidden] { display: none; }
+  .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .files li {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 8px 6px 4px; font-size: 15px;
+  }
+  .files li.dragging { opacity: .4; }
+  .files li.drop-before { box-shadow: 0 -3px 0 var(--cloth); }
+  .files li.drop-after { box-shadow: 0 3px 0 var(--cloth); }
+  .files .grip { cursor: grab; color: var(--muted); padding: 4px 6px; user-select: none; letter-spacing: -2px; }
+  .files .idx {
+    flex: none; width: 1.7em; height: 1.7em; border-radius: 50%;
+    display: grid; place-items: center; font-size: 13px; font-weight: 600;
+    background: var(--cloth); color: var(--cloth-ink);
+  }
+  .files .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .files .fpages { flex: none; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .files button {
+    flex: none; width: 30px; height: 30px; padding: 0; border-radius: 5px;
+    border: 1px solid var(--line); background: var(--sheet); color: var(--ink); font-size: 15px; cursor: pointer;
+  }
+  .files button:disabled { opacity: .3; }
+  .filefoot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .filefoot .check[hidden] { display: none; }
+  .linkbtn { margin-left: auto; background: none; border: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; cursor: pointer; }
+
   /* 미리보기 */
   .preview {
     margin: 20px 0 32px;
@@ -174,6 +203,43 @@
   .options input { position: absolute; opacity: 0; pointer-events: none; }
   .options label:has(input:checked) { border-color: var(--cloth); box-shadow: inset 0 0 0 1px var(--cloth); }
   .options label:has(input:focus-visible) { outline: 2px solid var(--cloth); outline-offset: 2px; }
+  /* 페이지 번호 */
+  .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; }
+  .switch input { width: 18px; height: 18px; accent-color: var(--cloth); }
+  .numbering { display: flex; flex-wrap: wrap; gap: 20px 32px; margin-top: 14px; }
+  .numbering[hidden] { display: none; }
+  .pospick {
+    flex: none; width: 128px; aspect-ratio: 1 / 1.35;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: auto 1fr auto;
+    background: var(--sheet); border: 1px solid var(--line); border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 4px;
+  }
+  .pospick label {
+    display: flex; justify-content: center; align-items: center;
+    height: 30px; border-radius: 4px; cursor: pointer;
+  }
+  .pospick label.b { grid-row: 3; }
+  .pospick label::before {
+    content: ""; width: 16px; height: 5px; border-radius: 2px; background: var(--block);
+  }
+  .pospick label:hover::before { background: var(--muted); }
+  .pospick label:has(input:checked)::before { background: var(--cloth); width: 20px; height: 7px; }
+  .pospick label:has(input:focus-visible) { outline: 2px solid var(--cloth); outline-offset: -2px; }
+  .pospick input { position: absolute; opacity: 0; pointer-events: none; }
+  .pospick .mid { grid-column: 1 / 4; grid-row: 2; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 14px; }
+  .pospick .mid span { height: 3px; background: var(--line); border-radius: 2px; }
+  .pospick .mid span:nth-child(3) { width: 60%; }
+  .numfields { flex: 1; min-width: 260px; display: grid; gap: 12px; align-content: start; }
+  .field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 15px; }
+  .field[hidden] { display: none; }
+  .field > .name { width: 6.5em; color: var(--muted); }
+  .field input[type="number"], .field select {
+    font: inherit; color: var(--ink); background: var(--sheet);
+    border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px;
+  }
+  .field input[type="number"] { width: 4.6em; text-align: right; }
+  .field .check { font-size: 15px; }
+  .demo .dnum { position: absolute; color: var(--ink); white-space: nowrap; line-height: 1; font-family: Helvetica, Arial, sans-serif; }
   .manual { margin-top: 12px; }
   .manual[hidden] { display: none; }
 
@@ -196,13 +262,22 @@
 <body>
 <main>
   <h1>제본 여백 넣기</h1>
-  <p class="lead">PDF 페이지 크기는 그대로 두고 내용을 옮겨서 제본 쪽 여백을 늘립니다. 반대쪽 여백이 그만큼 줄어들고, 잘리는 내용이 걱정되면 축소해서 맞출 수 있습니다.</p>
+  <p class="lead">PDF 페이지 크기는 그대로 두고 내용을 옮겨서 제본 쪽 여백을 늘립니다. 반대쪽 여백이 그만큼 줄어들고, 잘리는 내용이 걱정되면 축소해서 맞출 수 있습니다. 여러 PDF를 원하는 순서로 합치고, 페이지 번호도 함께 넣을 수 있습니다.</p>
 
   <label class="drop" id="drop">
-    <input type="file" id="file" accept="application/pdf,.pdf">
-    <span class="pick">PDF 선택</span>
-    <span class="hint" id="fileName">또는 여기로 끌어다 놓기</span>
+    <input type="file" id="file" accept="application/pdf,.pdf" multiple>
+    <span class="pick">PDF 추가</span>
+    <span class="hint" id="fileName">또는 여기로 끌어다 놓기. 여러 개를 넣으면 순서대로 합칩니다.</span>
   </label>
+
+  <div class="filebox" id="filebox" hidden>
+    <ol class="files" id="fileList" aria-label="합칠 파일 순서"></ol>
+    <div class="filefoot">
+      <span id="fileSummary"></span>
+      <label class="check" id="oddStartField"><input type="checkbox" id="oddStart">각 파일을 홀수 쪽에서 시작 (빈 쪽 추가)</label>
+      <button type="button" class="linkbtn" id="clearFiles">모두 빼기</button>
+    </div>
+  </div>
 
   <section class="preview" aria-label="미리보기">
     <div class="stage" id="stage"></div>
@@ -259,12 +334,59 @@
     </div>
   </fieldset>
 
+  <fieldset id="numSet">
+    <label class="switch"><input type="checkbox" id="numOn">페이지 번호 넣기</label>
+    <div class="numbering" id="numbering" hidden>
+      <div class="pospick" role="radiogroup" aria-label="번호 위치">
+        <label title="왼쪽 위"><input type="radio" name="numpos" value="tl" aria-label="왼쪽 위"></label>
+        <label title="가운데 위"><input type="radio" name="numpos" value="tc" aria-label="가운데 위"></label>
+        <label title="오른쪽 위"><input type="radio" name="numpos" value="tr" aria-label="오른쪽 위"></label>
+        <div class="mid" aria-hidden="true"><span></span><span></span><span></span></div>
+        <label class="b" title="왼쪽 아래"><input type="radio" name="numpos" value="bl" aria-label="왼쪽 아래"></label>
+        <label class="b" title="가운데 아래"><input type="radio" name="numpos" value="bc" aria-label="가운데 아래" checked></label>
+        <label class="b" title="오른쪽 아래"><input type="radio" name="numpos" value="br" aria-label="오른쪽 아래"></label>
+      </div>
+      <div class="numfields">
+        <div class="field">
+          <span class="name">넣을 범위</span>
+          <input type="number" id="numFrom" min="1" value="1" aria-label="시작 페이지">쪽부터
+          <input type="number" id="numTo" min="1" placeholder="끝" aria-label="끝 페이지">쪽까지
+        </div>
+        <div class="field">
+          <span class="name">시작 번호</span>
+          <input type="number" id="numStart" min="0" value="1" aria-label="시작 번호">
+        </div>
+        <div class="field">
+          <span class="name">형식</span>
+          <select id="numFormat" aria-label="번호 형식">
+            <option value="plain">1</option>
+            <option value="dash">- 1 -</option>
+            <option value="total">1 / 전체</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="name">글자 크기</span>
+          <input type="number" id="numSize" min="4" max="48" step="0.5" value="10" aria-label="글자 크기(pt)">pt
+        </div>
+        <div class="field">
+          <span class="name">가장자리 거리</span>
+          <input type="number" id="numEdge" min="0" max="80" step="0.5" value="10" aria-label="가장자리 거리(mm)">mm
+        </div>
+        <div class="field" id="mirrorField">
+          <label class="check"><input type="checkbox" id="numMirror" checked>짝수 페이지는 좌우 반대로 (바깥쪽 맞춤)</label>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
   <button class="go" id="run" disabled>여백 넣고 내려받기</button>
   <div class="status" id="status" role="status" aria-live="polite"></div>
 
   <div class="note">
     <p>파일은 서버로 올라가지 않고 이 브라우저 안에서만 처리됩니다.</p>
     <p>노란 영역은 새로 생긴 제본 여백입니다. 축소할 때는 내용이 제본 반대쪽과 위아래로도 고르게 줄어듭니다.</p>
+    <p>여러 파일을 합칠 때 책갈피(목차)는 옮겨지지 않습니다.</p>
+    <p>페이지 번호는 제본 여백을 뺀 영역을 기준으로, 가장자리에서 지정한 거리만큼 떨어진 곳에 넣습니다.</p>
   </div>
 </main>
 
@@ -286,7 +408,59 @@
   const getScaleMode = () => document.querySelector('input[name="scale"]:checked').value;
   const getMargin = () => Math.max(0, parseFloat($("marginNum").value) || 0);
   const getManualPct = () => Math.min(100, Math.max(10, parseFloat($("scaleNum").value) || 100));
-  const settings = () => ({ marginMm: getMargin(), mode: getMode(), scaleMode: getScaleMode(), manualPct: getManualPct() });
+  const intVal = (id, def) => { const v = parseInt($(id).value, 10); return Number.isFinite(v) ? v : def; };
+  const numVal = (id, def) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : def; };
+  const getNumbering = () => ({
+    on: $("numOn").checked,
+    pos: document.querySelector('input[name="numpos"]:checked').value,
+    from: Math.max(1, intVal("numFrom", 1)),
+    to: $("numTo").value.trim() === "" ? Infinity : Math.max(1, intVal("numTo", Infinity)),
+    start: intVal("numStart", 1),
+    format: $("numFormat").value,
+    size: Math.min(48, Math.max(4, numVal("numSize", 10))),
+    edgeMm: Math.max(0, numVal("numEdge", 10)),
+    mirror: $("numMirror").checked,
+  });
+  const settings = () => ({ marginMm: getMargin(), mode: getMode(), scaleMode: getScaleMode(), manualPct: getManualPct(), num: getNumbering() });
+
+  // ---------- 페이지 번호 ----------
+  // 페이지 번호에 해당하는 표시 문자열 (번호를 넣지 않는 페이지면 null)
+  function numberText(pageNo, total, num) {
+    const to = Math.min(num.to, total);
+    if (!num.on || pageNo < num.from || pageNo > to) return null;
+    const n = num.start + (pageNo - num.from);
+    const last = num.start + (to - num.from);
+    if (num.format === "dash") return `- ${n} -`;
+    if (num.format === "total") return `${n} / ${last}`;
+    return String(n);
+  }
+
+  // 화면 기준 좌표(왼쪽 아래 원점, pt)로 번호 글자의 시작점 계산
+  // 제본 여백은 피해서, 여백을 뺀 나머지 영역 안에서 위치를 잡음
+  function numberPlacement(pageNo, visW, visH, textW, opts) {
+    const num = opts.num;
+    let pos = num.pos;
+    if (num.mirror && opts.mode.startsWith("duplex") && pageNo % 2 === 0) {
+      pos = pos.replace("l", "x").replace("r", "l").replace("x", "r");
+    }
+    const m = opts.marginMm * MM_TO_PT, d = num.edgeMm * MM_TO_PT;
+    const [dx, dy] = bindDir(pageNo, opts.mode);
+    const L = dx > 0 ? m : 0, R = dx < 0 ? m : 0, T = dy < 0 ? m : 0;
+    const col = pos[1], row = pos[0];
+    const vx = col === "l" ? L + d : col === "r" ? visW - R - d - textW : (L + visW - R) / 2 - textW / 2;
+    const vy = row === "t" ? visH - T - d - num.size * 0.72 : d;
+    return [vx, vy];
+  }
+
+  // 화면 기준 점을 PDF 좌표로 (회전된 페이지 대응)
+  function visualPointToUser(vx, vy, box, rot) {
+    switch (rot) {
+      case 90: return [box.x + box.width - vy, box.y + vx];
+      case 180: return [box.x + box.width - vx, box.y + box.height - vy];
+      case 270: return [box.x + vy, box.y + box.height - vx];
+      default: return [box.x + vx, box.y + vy];
+    }
+  }
 
   // ---------- 변환 계산 ----------
   // 제본 쪽 방향(화면 기준). [x, y]: x=+1 → 내용을 오른쪽으로(왼쪽 제본)
@@ -335,12 +509,33 @@
 
   // ---------- PDF 처리 ----------
   async function addGutter(bytes, opts) {
-    const { PDFDocument, PDFName, PDFArray, PDFDict, pushGraphicsState, popGraphicsState, concatTransformationMatrix } = PDFLib;
+    const { PDFDocument, PDFName, PDFArray, PDFDict, pushGraphicsState, popGraphicsState, concatTransformationMatrix, StandardFonts, rgb, degrees } = PDFLib;
     const doc = await PDFDocument.load(bytes);
+    const pages = doc.getPages();
+    const font = opts.num.on ? await doc.embedFont(StandardFonts.Helvetica) : null;
 
-    doc.getPages().forEach((page, i) => {
+    pages.forEach((page, i) => {
+      transformPage(page, i + 1);
+      if (font) drawNumber(page, i + 1);
+    });
+    return doc.save();
+
+    function drawNumber(page, pageNo) {
+      const text = numberText(pageNo, pages.length, opts.num);
+      if (!text) return;
       const box = page.getCropBox();
-      const [a, b, c, d, e, f] = matrixFor(i + 1, box, page.getRotation().angle, opts);
+      const rot = ((page.getRotation().angle % 360) + 360) % 360;
+      const visW = rot === 90 || rot === 270 ? box.height : box.width;
+      const visH = rot === 90 || rot === 270 ? box.width : box.height;
+      const size = opts.num.size;
+      const [vx, vy] = numberPlacement(pageNo, visW, visH, font.widthOfTextAtSize(text, size), opts);
+      const [x, y] = visualPointToUser(vx, vy, box, rot);
+      page.drawText(text, { x, y, size, font, color: rgb(0, 0, 0), rotate: degrees(rot) });
+    }
+
+    function transformPage(page, pageNo) {
+      const box = page.getCropBox();
+      const [a, b, c, d, e, f] = matrixFor(pageNo, box, page.getRotation().angle, opts);
       if (a === 1 && !e && !f) return;
 
       page.node.normalize();
@@ -359,8 +554,7 @@
           a * r.x + e, d * r.y + f, a * (r.x + r.width) + e, d * (r.y + r.height) + f,
         ]));
       }
-    });
-    return doc.save();
+    }
   }
 
   // ---------- 펼침면 구성 ----------
@@ -405,6 +599,21 @@
       content.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
       sheet.appendChild(content);
       sheet.appendChild(makeBand(n, opts, box.width, box.height));
+      const text = numberText(n, 12, opts.num);
+      if (text) {
+        // 작은 그림에서도 보이도록 최소 크기를 둠
+        const px = Math.max(opts.num.size / box.width * w, 8);
+        const size = px / w * box.width;
+        const o = { ...opts, num: { ...opts.num, size } };
+        const [vx, vy] = numberPlacement(n, box.width, box.height, text.length * size * 0.556, o);
+        const dn = document.createElement("span");
+        dn.className = "dnum"; dn.textContent = text;
+        Object.assign(dn.style, {
+          left: (vx / box.width * w) + "px", bottom: (vy / box.height * h) + "px",
+          fontSize: px + "px",
+        });
+        sheet.appendChild(dn);
+      }
       wrap.appendChild(sheet);
       const num = document.createElement("div");
       num.className = "pnum"; num.textContent = n;
@@ -439,7 +648,12 @@
     }[opts.mode];
     const scale = opts.scaleMode === "auto" ? ", 잘리지 않게 자동 축소"
       : opts.scaleMode === "manual" ? `, ${opts.manualPct}%로 축소` : "";
-    return `${where}에 ${opts.marginMm}mm${scale}`;
+    let num = "";
+    if (opts.num.on) {
+      const range = opts.num.to === Infinity ? `${opts.num.from}쪽부터` : `${opts.num.from}–${opts.num.to}쪽`;
+      num = `, 페이지 번호 ${range}`;
+    }
+    return `${where}에 ${opts.marginMm}mm${scale}${num}`;
   }
 
   // ---------- 실제 미리보기 ----------
@@ -536,8 +750,11 @@
   };
   function onChange() {
     $("manualRow").hidden = getScaleMode() !== "manual";
+    $("numbering").hidden = !$("numOn").checked;
+    $("mirrorField").hidden = !getMode().startsWith("duplex");
     if (state.file) rebuild(); else renderDemo();
   }
+  ["input", "change"].forEach(ev => $("numSet").addEventListener(ev, onChange));
   link("marginRange", "marginNum", 30);
   link("scaleRange", "scaleNum", 100);
   document.querySelectorAll('input[name="mode"], input[name="scale"]').forEach(r => r.addEventListener("change", () => {
@@ -558,32 +775,177 @@
   let resizeTimer;
   window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
 
-  // 파일 선택
+  // ---------- 파일 목록 / 합치기 ----------
   const fileInput = $("file"), drop = $("drop");
-  async function setFile(f) {
-    if (!f) return;
-    if (f.type !== "application/pdf" && !/\.pdf$/i.test(f.name)) {
-      setStatus("PDF 파일만 넣을 수 있습니다.", true);
+  let fileSeq = 0;
+  state.files = [];   // { id, file, bytes, pages }
+
+  async function addFiles(list) {
+    const pdfs = [...list].filter(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+    if (!pdfs.length) { setStatus("PDF 파일만 넣을 수 있습니다.", true); return; }
+    setStatus("불러오는 중…");
+    const failed = [];
+    for (const f of pdfs) {
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const doc = await PDFLib.PDFDocument.load(bytes);
+        state.files.push({ id: ++fileSeq, file: f, bytes, pages: doc.getPageCount() });
+      } catch (err) {
+        console.error(err);
+        failed.push(f.name + (/encrypt/i.test(String(err)) ? " (암호 걸림)" : ""));
+      }
+    }
+    await filesChanged();
+    if (failed.length) setStatus(`다음 파일은 읽지 못해 빼두었습니다: ${failed.map(escapeHtml).join(", ")}`, true);
+  }
+
+  // 목록 순서대로 하나의 PDF로 합침
+  async function mergeFiles() {
+    const files = state.files;
+    if (files.length === 1 && !needsBlank()) return files[0].bytes;
+    const { PDFDocument } = PDFLib;
+    const out = await PDFDocument.create();
+    for (const [k, item] of files.entries()) {
+      if (k > 0 && $("oddStart").checked && out.getPageCount() % 2 === 1) {
+        const last = out.getPage(out.getPageCount() - 1);
+        const { width, height } = last.getSize();
+        out.addPage([width, height]);
+      }
+      const src = await PDFDocument.load(item.bytes);
+      const copied = await out.copyPages(src, src.getPageIndices());
+      copied.forEach(p => out.addPage(p));
+    }
+    return out.save();
+  }
+  const needsBlank = () => state.files.length > 1 && $("oddStart").checked;
+
+  let mergeToken = 0;
+  async function filesChanged() {
+    const token = ++mergeToken;
+    renderFileList();
+    if (!state.files.length) {
+      if (state.srcDoc) state.srcDoc.destroy();
+      if (state.outDoc) state.outDoc.destroy();
+      Object.assign(state, { file: null, srcBytes: null, outBytes: null, srcDoc: null, outDoc: null, spread: 0 });
+      $("run").disabled = true;
+      setStatus("");
+      renderDemo();
       return;
     }
-    setStatus("불러오는 중…");
     try {
-      const bytes = new Uint8Array(await f.arrayBuffer());
+      setStatus(state.files.length > 1 ? "합치는 중…" : "불러오는 중…");
+      const bytes = await mergeFiles();
       const srcDoc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+      if (token !== mergeToken) { srcDoc.destroy(); return; }
       if (state.srcDoc) state.srcDoc.destroy();
-      Object.assign(state, { file: f, srcBytes: bytes, srcDoc, spread: 0 });
-      $("fileName").textContent = f.name;
-      $("fileName").classList.add("has");
+      Object.assign(state, { file: state.files[0].file, srcBytes: bytes, srcDoc });
       $("run").disabled = false;
+      $("fileSummary").textContent = state.files.length > 1
+        ? `${state.files.length}개 파일, 합쳐서 ${srcDoc.numPages}쪽` : `${srcDoc.numPages}쪽`;
       await rebuild();
     } catch (err) {
       showError(err);
     }
   }
-  fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+
+  function escapeHtml(t) { return t.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+  function renderFileList() {
+    const ol = $("fileList");
+    $("filebox").hidden = !state.files.length;
+    $("oddStartField").hidden = state.files.length < 2;
+    $("fileName").textContent = state.files.length
+      ? "파일을 더 넣으면 목록 끝에 붙습니다. 순서는 끌어서 바꿀 수 있습니다."
+      : "또는 여기로 끌어다 놓기. 여러 개를 넣으면 순서대로 합칩니다.";
+    ol.innerHTML = "";
+    state.files.forEach((item, i) => {
+      const li = document.createElement("li");
+      li.draggable = true;
+      li.dataset.id = item.id;
+      li.innerHTML = `
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <span class="idx">${i + 1}</span>
+        <span class="fname" title="${escapeHtml(item.file.name)}">${escapeHtml(item.file.name)}</span>
+        <span class="fpages">${item.pages}쪽</span>
+        <button type="button" data-act="up" aria-label="${escapeHtml(item.file.name)} 위로" ${i === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" data-act="down" aria-label="${escapeHtml(item.file.name)} 아래로" ${i === state.files.length - 1 ? "disabled" : ""}>↓</button>
+        <button type="button" data-act="remove" aria-label="${escapeHtml(item.file.name)} 빼기">✕</button>`;
+      ol.appendChild(li);
+    });
+  }
+
+  function moveFile(from, to) {
+    if (to < 0 || to >= state.files.length || from === to) return false;
+    const [it] = state.files.splice(from, 1);
+    state.files.splice(to, 0, it);
+    return true;
+  }
+  const indexOfId = (id) => state.files.findIndex(f => f.id === Number(id));
+
+  $("fileList").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const i = indexOfId(btn.closest("li").dataset.id);
+    const act = btn.dataset.act;
+    let changed = false;
+    if (act === "up") changed = moveFile(i, i - 1);
+    if (act === "down") changed = moveFile(i, i + 1);
+    if (act === "remove") { state.files.splice(i, 1); changed = true; }
+    if (changed) {
+      state.spread = 0;
+      filesChanged().then(() => {
+        // 키보드로 옮길 때 같은 버튼에 초점 유지
+        const li = act !== "remove" && $("fileList").children[act === "up" ? i - 1 : i + 1];
+        const b = li && li.querySelector(`[data-act="${act}"]`);
+        if (b && !b.disabled) b.focus();
+      });
+    }
+  });
+
+  // 끌어서 순서 바꾸기
+  let dragId = null;
+  const list = $("fileList");
+  const clearMarks = () => list.querySelectorAll("li").forEach(li => li.classList.remove("drop-before", "drop-after", "dragging"));
+  list.addEventListener("dragstart", (e) => {
+    const li = e.target.closest("li");
+    if (!li) return;
+    dragId = li.dataset.id;
+    li.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", dragId);
+  });
+  list.addEventListener("dragover", (e) => {
+    if (dragId === null) return;
+    e.preventDefault();
+    const li = e.target.closest("li");
+    list.querySelectorAll("li").forEach(x => x.classList.remove("drop-before", "drop-after"));
+    if (!li || li.dataset.id === dragId) return;
+    const r = li.getBoundingClientRect();
+    li.classList.add(e.clientY < r.top + r.height / 2 ? "drop-before" : "drop-after");
+  });
+  list.addEventListener("drop", (e) => {
+    if (dragId === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const li = e.target.closest("li");
+    if (li && li.dataset.id !== dragId) {
+      const from = indexOfId(dragId);
+      let to = indexOfId(li.dataset.id);
+      if (li.classList.contains("drop-after")) to += 1;
+      if (from < to) to -= 1;
+      if (moveFile(from, to)) { state.spread = 0; filesChanged(); }
+    }
+    clearMarks(); dragId = null;
+  });
+  list.addEventListener("dragend", () => { clearMarks(); dragId = null; });
+
+  $("oddStart").addEventListener("change", () => filesChanged());
+  $("clearFiles").addEventListener("click", () => { state.files = []; filesChanged(); });
+
+  fileInput.addEventListener("change", () => { addFiles(fileInput.files); fileInput.value = ""; });
   ["dragenter", "dragover"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", ev => setFile(ev.dataTransfer.files[0]));
+  drop.addEventListener("drop", ev => { if (ev.dataTransfer.files.length) addFiles(ev.dataTransfer.files); });
 
   function setStatus(html, isError = false) {
     $("status").innerHTML = html;
@@ -604,7 +966,8 @@
     try {
       const out = state.dirty || !state.outBytes ? await addGutter(state.srcBytes.slice(0), settings()) : state.outBytes;
       const url = URL.createObjectURL(new Blob([out], { type: "application/pdf" }));
-      const name = state.file.name.replace(/\.pdf$/i, "") + "_제본여백.pdf";
+      const base = state.file.name.replace(/\.pdf$/i, "");
+      const name = state.files.length > 1 ? `${base}_외${state.files.length - 1}개_합본.pdf` : `${base}_제본여백.pdf`;
       const a = document.createElement("a");
       a.href = url; a.download = name;
       document.body.appendChild(a); a.click(); a.remove();
