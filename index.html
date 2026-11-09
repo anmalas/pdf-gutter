@@ -277,7 +277,10 @@
   .bands-off .trimline { display: none; }
   .field .sub { font-size: 13px; color: var(--muted); }
   #customTrim[hidden] { display: none; }
-  #printSet .seg label { padding: 4px 12px; font-size: 14px; }
+  #printSet .seg label, .quality .seg label { padding: 4px 12px; font-size: 14px; }
+  .field.quality { margin-top: 12px; }
+  .files .dpi { font-size: 13px; }
+  .files .dpi.low { color: var(--error); font-weight: 600; }
   .hint-text { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
   .hint-text[hidden] { display: none; }
   .manual[hidden] { display: none; }
@@ -485,6 +488,13 @@
     <legend>글꼴</legend>
     <label class="switch"><input type="checkbox" id="outline">글꼴 아웃라인 처리</label>
     <p class="hint-text">글자를 도형(벡터 윤곽선)으로 바꿔서, 인쇄소에 글꼴이 없어도 똑같이 나오게 합니다. 처리 후에는 글자를 선택하거나 검색할 수 없습니다.</p>
+    <div class="field quality" id="qualityField" hidden>
+      <span class="name">이미지 화질</span>
+      <span class="seg">
+        <label><input type="radio" name="quality" value="high" checked>최고 화질 (권장)</label>
+        <label><input type="radio" name="quality" value="lossless">무손실 (파일이 큼)</label>
+      </span>
+    </div>
     <p class="hint-text" id="colorHint" hidden>색상 변환과 아웃라인 처리는 내려받을 때 진행되며, 미리보기에는 반영되지 않습니다. 처음 한 번은 변환 도구(약 16MB)를 내려받느라 시간이 걸립니다.</p>
   </fieldset>
 
@@ -495,7 +505,8 @@
     <p>파일은 서버로 올라가지 않고 이 브라우저 안에서만 처리됩니다.</p>
     <p>노란 영역은 새로 생긴 제본 여백입니다. 축소할 때는 내용이 제본 반대쪽과 위아래로도 고르게 줄어듭니다.</p>
     <p>여러 파일을 합칠 때 책갈피(목차)는 옮겨지지 않습니다. 빈 페이지는 바로 앞 쪽과 같은 크기로 들어갑니다.</p>
-    <p>이미지는 비율을 유지한 채 페이지 가운데에 꽉 차게 들어갑니다. 휴대폰 사진의 회전 정보도 반영합니다.</p>
+    <p>이미지는 비율을 유지한 채 페이지 가운데에 꽉 차게 들어갑니다. JPG·PNG는 다시 압축하지 않고 원본 그대로 넣으며, 휴대폰 사진의 회전 정보도 화질 손실 없이 반영합니다. 목록의 dpi는 최종 인쇄 크기 기준이며, 300dpi보다 낮으면 빨간색으로 표시됩니다.</p>
+    <p>미리보기는 화면 크기에 맞춰 그린 것이라 실제 파일보다 흐리게 보일 수 있습니다.</p>
     <p>RGB·CMYK 변환과 글꼴 아웃라인 처리에는 <a href="https://www.ghostscript.com/" target="_blank" rel="noopener">Ghostscript</a>(AGPL-3.0)를 사용합니다. 정밀한 색 관리(ICC 프로파일)가 필요하면 인쇄소 지침을 따르세요.</p>
     <p>완성 크기를 바꾸면 내용을 비율에 맞게 줄이거나 키운 뒤 제본 여백과 페이지 번호를 적용하고, 마지막에 도련과 재단선을 붙입니다. PDF에는 재단 크기(TrimBox)와 도련 범위(BleedBox)도 기록됩니다.</p>
     <p>페이지 번호는 제본 여백을 뺀 영역을 기준으로, 가장자리에서 지정한 거리만큼 떨어진 곳에 넣습니다.</p>
@@ -518,9 +529,10 @@
   // ---------- 설정 읽기 ----------
   const getMode = () => document.querySelector('input[name="mode"]:checked').value;
   const getColor = () => document.querySelector('input[name="color"]:checked').value;
+  const getQuality = () => document.querySelector('input[name="quality"]:checked').value;
   const needsGs = () => getColor() !== "original" || $("outline").checked;
   document.querySelectorAll('input[name="color"], #outline').forEach(r => r.addEventListener("change", () => {
-    $("colorHint").hidden = !needsGs();
+    $("colorHint").hidden = !needsGs(); $("qualityField").hidden = !needsGs();
   }));
   const getScaleMode = () => document.querySelector('input[name="scale"]:checked').value;
   const getMargin = () => Math.max(0, parseFloat($("marginNum").value) || 0);
@@ -978,11 +990,12 @@
   function onChange() {
     $("manualRow").hidden = getScaleMode() !== "manual";
     $("numbering").hidden = !$("numOn").checked;
-    $("colorHint").hidden = !needsGs();
+    $("colorHint").hidden = !needsGs(); $("qualityField").hidden = !needsGs();
     $("mirrorField").hidden = !getMode().startsWith("duplex");
     $("customTrim").hidden = $("trimSize").value !== "custom";
     $("bleedFillField").hidden = !(numVal("bleed", 0) > 0);
     updatePrintSummary();
+    updateDpiBadges();
     if (state.file) rebuild(); else renderDemo();
   }
   ["input", "change"].forEach(ev => $("numSet").addEventListener(ev, onChange));
@@ -1059,22 +1072,27 @@
   // JPG·PNG는 원본 그대로 넣고, 그 밖의 형식이나 방향(EXIF) 정보가 있는 사진은 브라우저로 다시 그려서 변환
   async function loadImageItem(f) {
     const raw = new Uint8Array(await f.arrayBuffer());
-    const bmp = await createImageBitmap(new Blob([raw], { type: f.type || "" }));
-    const w = bmp.width, h = bmp.height;
+    const bmp = await createImageBitmap(new Blob([raw], { type: f.type || "" }), { imageOrientation: "from-image" });
+    const w = bmp.width, h = bmp.height;          // 화면에 보이는 방향 기준 크기
     const isJpg = raw[0] === 0xff && raw[1] === 0xd8;
     const isPng = raw[0] === 0x89 && raw[1] === 0x50 && raw[2] === 0x4e && raw[3] === 0x47;
-    let bytes = raw, type = isJpg ? "jpg" : "png";
-    if (!(isPng || (isJpg && jpegOrientation(raw) === 1))) {
+    const orient = isJpg ? jpegOrientation(raw) : 1;
+    // 화질 유지: JPG·PNG는 원본 바이트를 그대로 넣음.
+    // 사진 회전 정보(90/180/270도)는 다시 압축하지 않고 PDF 안에서 돌려서 그림
+    const ROT = { 1: 0, 3: 180, 6: -90, 8: 90 };
+    let bytes = raw, type = isJpg ? "jpg" : "png", rot = ROT[orient] ?? 0;
+    if (!(isPng || (isJpg && orient in ROT))) {
+      // 그 밖의 형식(WebP 등)이나 뒤집힌 사진만 무손실 PNG로 변환
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       canvas.getContext("2d").drawImage(bmp, 0, 0);
-      const mime = isJpg ? "image/jpeg" : "image/png";
-      const blob = await new Promise(res => canvas.toBlob(res, mime, 0.95));
+      const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
       if (!blob) throw new Error("이미지 변환 실패");
       bytes = new Uint8Array(await blob.arrayBuffer());
+      type = "png"; rot = 0;
     }
     bmp.close();
-    return { id: ++fileSeq, kind: "image", file: f, bytes, imgType: type, w, h, pages: 1, thumb: URL.createObjectURL(f) };
+    return { id: ++fileSeq, kind: "image", file: f, bytes, imgType: type, rot, w, h, pages: 1, thumb: URL.createObjectURL(f) };
   }
 
   // JPG의 EXIF 방향 값 (없으면 1)
@@ -1134,8 +1152,13 @@
         const img = item.imgType === "jpg" ? await out.embedJpg(item.bytes) : await out.embedPng(item.bytes);
         const [pw, ph] = imagePageSize(item);
         const s = Math.min(pw / item.w, ph / item.h);
-        const w = item.w * s, h = item.h * s;
-        out.addPage([pw, ph]).drawImage(img, { x: (pw - w) / 2, y: (ph - h) / 2, width: w, height: h });
+        const w = item.w * s, h = item.h * s, x = (pw - w) / 2, y = (ph - h) / 2;
+        const page = out.addPage([pw, ph]);
+        // 회전 정보가 있는 사진은 원본 그대로 넣고 돌려서 배치
+        if (item.rot === -90) page.drawImage(img, { x, y: y + h, width: h, height: w, rotate: PDFLib.degrees(-90) });
+        else if (item.rot === 90) page.drawImage(img, { x: x + w, y, width: h, height: w, rotate: PDFLib.degrees(90) });
+        else if (item.rot === 180) page.drawImage(img, { x: x + w, y: y + h, width: w, height: h, rotate: PDFLib.degrees(180) });
+        else page.drawImage(img, { x, y, width: w, height: h });
         continue;
       }
       const src = await PDFDocument.load(item.bytes);
@@ -1220,7 +1243,9 @@
         : `<span class="thumb pdf" aria-hidden="true">PDF</span>`;
       const pages = item.kind === "blank"
         ? `<label class="fpages bpages"><input type="number" class="bcount" min="1" max="200" value="${item.count}" aria-label="빈 페이지 장수">장</label>`
-        : `<span class="fpages">${item.kind === "image" ? "이미지" : item.pages + "쪽"}</span>`;
+        : item.kind === "image"
+          ? `<span class="fpages">이미지 <span class="dpi" data-dpi-for="${item.id}"></span></span>`
+          : `<span class="fpages">${item.pages}쪽</span>`;
       if (item.kind === "blank") li.className = "blank-row";
       li.innerHTML = `
         <span class="grip" aria-hidden="true">⋮⋮</span>
@@ -1235,6 +1260,37 @@
         <button type="button" data-act="remove" aria-label="${label} 빼기">✕</button>
         </span>`;
       ol.appendChild(li);
+    });
+    updateDpiBadges();
+  }
+
+  // 최종 인쇄 크기 기준의 이미지 해상도(dpi) 추정
+  function effectiveDpi(item) {
+    const opts = settings(), pr = opts.print;
+    let [pw, ph] = imagePageSize(item);
+    const fit = Math.min(pw / item.w, ph / item.h);            // pt / px
+    let scale = 1;
+    if (pr.trim) {
+      let [tw, th] = pr.trim.map(v => v * MM_TO_PT);
+      if ((pw > ph) !== (tw > th)) [tw, th] = [th, tw];
+      scale *= Math.min(tw / pw, th / ph);
+      [pw, ph] = [tw, th];
+    }
+    const m = opts.marginMm * MM_TO_PT;
+    const along = opts.mode === "top" ? ph : pw;
+    scale *= scaleFor(opts.scaleMode, along, m, opts.manualPct);
+    const b = pr.bleedMm * MM_TO_PT;
+    if (pr.bleedFill === "scale" && b > 0) scale *= Math.max((pw + 2 * b) / pw, (ph + 2 * b) / ph);
+    return 72 / (fit * scale);
+  }
+  function updateDpiBadges() {
+    document.querySelectorAll("[data-dpi-for]").forEach(el => {
+      const item = state.files.find(f => f.id === Number(el.dataset.dpiFor));
+      if (!item) return;
+      const dpi = Math.round(effectiveDpi(item));
+      el.textContent = `· 약 ${dpi}dpi`;
+      el.classList.toggle("low", dpi < 300);
+      el.title = dpi < 300 ? "인쇄용으로는 300dpi 이상을 권장합니다. 더 큰 이미지를 쓰거나 페이지를 작게 하세요." : "인쇄에 충분한 해상도입니다.";
     });
   }
 
@@ -1388,13 +1444,22 @@
     };`;
 
   // color: "original" | "rgb" | "cmyk", outline: 글꼴을 윤곽선으로 바꿀지
-  function runGhostscript(bytes, { color, outline }, onProgress) {
+  function runGhostscript(bytes, { color, outline, quality }, onProgress) {
     const strategy = color === "cmyk" ? ["-sColorConversionStrategy=CMYK", "-dProcessColorModel=/DeviceCMYK"]
                    : color === "rgb" ? ["-sColorConversionStrategy=RGB", "-dProcessColorModel=/DeviceRGB"]
                    : ["-sColorConversionStrategy=LeaveColorUnchanged"];
+    // 화질 유지: 해상도 낮추기(다운샘플링)를 끄고, 다시 압축할 때도 최고 화질로
+    const noDownsample = ["-dDownsampleColorImages=false", "-dDownsampleGrayImages=false", "-dDownsampleMonoImages=false"];
+    const q = (quality === "lossless")
+      ? ["-dAutoFilterColorImages=false", "-dAutoFilterGrayImages=false",
+         "-dColorImageFilter=/FlateEncode", "-dGrayImageFilter=/FlateEncode"]
+      : [];
+    const hq = "<< /QFactor 0.1 /Blend 1 /HSamples [1 1 1 1] /VSamples [1 1 1 1] >>";
+    const dict = quality === "lossless" ? [] :
+      ["-c", `<< /ColorACSImageDict ${hq} /GrayACSImageDict ${hq} /ColorImageDict ${hq} /GrayImageDict ${hq} >> setdistillerparams`, "-f"];
     const args = ["-dSAFER", "-dBATCH", "-dNOPAUSE", "-sDEVICE=pdfwrite",
-      ...strategy, ...(outline ? ["-dNoOutputFonts"] : []),
-      "-dAutoRotatePages=/None", "-dDetectDuplicateImages=true", "-o", "/out.pdf", "/in.pdf"];
+      ...strategy, ...(outline ? ["-dNoOutputFonts"] : []), ...noDownsample, ...q,
+      "-dAutoRotatePages=/None", "-dDetectDuplicateImages=true", "-o", "/out.pdf", ...dict, "/in.pdf"];
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(new Blob([GS_WORKER], { type: "text/javascript" }));
       const worker = new Worker(url);
@@ -1422,7 +1487,7 @@
         const total = state.outDoc ? state.outDoc.numPages : 0;
         const what = [color !== "original" ? color.toUpperCase() + " 변환" : "", outline ? "아웃라인 처리" : ""].filter(Boolean).join(" · ");
         setStatus(`${what} 준비 중… (처음에는 변환 도구를 내려받느라 오래 걸릴 수 있습니다)`);
-        out = await runGhostscript(out, { color, outline }, (n) =>
+        out = await runGhostscript(out, { color, outline, quality: getQuality() }, (n) =>
           setStatus(`${what} 중… ${n}${total ? " / " + total : ""}쪽`));
       }
       const url = URL.createObjectURL(new Blob([out], { type: "application/pdf" }));
