@@ -108,11 +108,31 @@
     border: 1px solid var(--line); background: var(--sheet); color: var(--ink); font-size: 15px; cursor: pointer;
   }
   .files button:disabled { opacity: .3; }
+  .filefoot #addBlank { margin-left: auto; }
   .filefoot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 10px; font-size: 14px; color: var(--muted); }
   .filefoot .check[hidden] { display: none; }
   .files .thumb {
     flex: none; width: 30px; height: 30px; border-radius: 3px; object-fit: cover;
     border: 1px solid var(--line); background: var(--paper);
+  }
+  .files .actions { flex: none; display: flex; gap: 6px; }
+  @media (max-width: 560px) {
+    .files li { flex-wrap: wrap; row-gap: 6px; }
+    .files .thumb { display: none; }
+    .files .fname { flex: 1 1 40%; }
+    .files .actions { margin-left: auto; }
+  }
+  .files .thumb.blank { background: var(--sheet); border-style: dashed; }
+  .files li.blank-row { background: transparent; border-style: dashed; }
+  .files li.blank-row .fname { color: var(--muted); }
+  .files .bpages { display: inline-flex; align-items: center; gap: 4px; }
+  .files .bcount {
+    width: 4em; font: inherit; font-size: 14px; color: var(--ink); background: var(--sheet);
+    border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; text-align: right;
+  }
+  .smallbtn {
+    font: inherit; font-size: 14px; color: var(--cloth); background: var(--sheet);
+    border: 1px solid var(--cloth); border-radius: 5px; padding: 3px 10px; cursor: pointer;
   }
   .files .thumb.pdf { display: grid; place-items: center; font-size: 10px; font-weight: 600; color: var(--muted); }
   .imgopts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 10px; font-size: 14px; color: var(--muted); }
@@ -121,7 +141,7 @@
     margin-left: 6px; font: inherit; color: var(--ink); background: var(--sheet);
     border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px;
   }
-  .linkbtn { margin-left: auto; background: none; border: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; cursor: pointer; }
+  .linkbtn {  background: none; border: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; cursor: pointer; }
 
   /* 미리보기 */
   .preview {
@@ -253,6 +273,11 @@
   .field .check { font-size: 15px; }
   .demo .dnum { position: absolute; color: var(--ink); white-space: nowrap; line-height: 1; font-family: Helvetica, Arial, sans-serif; }
   .manual { margin-top: 12px; }
+  .trimline { position: absolute; pointer-events: none; border: 1px dashed #e0245e; }
+  .bands-off .trimline { display: none; }
+  .field .sub { font-size: 13px; color: var(--muted); }
+  #customTrim[hidden] { display: none; }
+  #printSet .seg label { padding: 4px 12px; font-size: 14px; }
   .hint-text { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
   .hint-text[hidden] { display: none; }
   .manual[hidden] { display: none; }
@@ -290,6 +315,7 @@
     <div class="filefoot">
       <span id="fileSummary"></span>
       <label class="check" id="oddStartField"><input type="checkbox" id="oddStart">각 파일을 홀수 쪽에서 시작 (빈 쪽 추가, 연속된 이미지는 한 묶음)</label>
+      <button type="button" class="smallbtn" id="addBlank">＋ 빈 페이지</button>
       <button type="button" class="linkbtn" id="clearFiles">모두 빼기</button>
     </div>
     <div class="imgopts" id="imgOptions" hidden>
@@ -406,6 +432,46 @@
     </div>
   </fieldset>
 
+  <fieldset id="printSet">
+    <legend>인쇄소 출력 크기</legend>
+    <div class="numfields">
+      <div class="field">
+        <span class="name">완성 크기</span>
+        <select id="trimSize" aria-label="완성(재단) 크기">
+          <option value="">원본 크기 그대로</option>
+          <option value="a4">A4 (210×297mm)</option>
+          <option value="a5">A5 · 국판 (148×210mm)</option>
+          <option value="b5">B5 (182×257mm)</option>
+          <option value="b6">B6 (128×182mm)</option>
+          <option value="shinguk">신국판 (152×225mm)</option>
+          <option value="crown">크라운판 (176×248mm)</option>
+          <option value="46">사륙판 (127×188mm)</option>
+          <option value="custom">직접 입력</option>
+        </select>
+        <span id="customTrim" hidden>
+          <input type="number" id="trimW" min="20" max="1000" step="1" value="150" aria-label="가로(mm)"> ×
+          <input type="number" id="trimH" min="20" max="1000" step="1" value="220" aria-label="세로(mm)"> mm
+        </span>
+      </div>
+      <div class="field">
+        <span class="name">재단 여백</span>
+        <input type="number" id="bleed" min="0" max="20" step="0.5" value="0" aria-label="재단 여백(도련, mm)">mm
+        <span class="sub">한쪽 기준, 보통 3mm</span>
+      </div>
+      <div class="field" id="bleedFillField" hidden>
+        <span class="name">여백 채우기</span>
+        <span class="seg">
+          <label><input type="radio" name="bleedFill" value="white" checked>흰색으로 비움</label>
+          <label><input type="radio" name="bleedFill" value="scale">내용을 키워 채움</label>
+        </span>
+      </div>
+      <div class="field">
+        <label class="check"><input type="checkbox" id="cropMarks">재단선 표시 (바깥에 10mm 추가)</label>
+      </div>
+      <p class="hint-text" id="printSummary"></p>
+    </div>
+  </fieldset>
+
   <fieldset>
     <legend>색상 형식</legend>
     <div class="options">
@@ -428,9 +494,10 @@
   <div class="note">
     <p>파일은 서버로 올라가지 않고 이 브라우저 안에서만 처리됩니다.</p>
     <p>노란 영역은 새로 생긴 제본 여백입니다. 축소할 때는 내용이 제본 반대쪽과 위아래로도 고르게 줄어듭니다.</p>
-    <p>여러 파일을 합칠 때 책갈피(목차)는 옮겨지지 않습니다.</p>
+    <p>여러 파일을 합칠 때 책갈피(목차)는 옮겨지지 않습니다. 빈 페이지는 바로 앞 쪽과 같은 크기로 들어갑니다.</p>
     <p>이미지는 비율을 유지한 채 페이지 가운데에 꽉 차게 들어갑니다. 휴대폰 사진의 회전 정보도 반영합니다.</p>
     <p>RGB·CMYK 변환과 글꼴 아웃라인 처리에는 <a href="https://www.ghostscript.com/" target="_blank" rel="noopener">Ghostscript</a>(AGPL-3.0)를 사용합니다. 정밀한 색 관리(ICC 프로파일)가 필요하면 인쇄소 지침을 따르세요.</p>
+    <p>완성 크기를 바꾸면 내용을 비율에 맞게 줄이거나 키운 뒤 제본 여백과 페이지 번호를 적용하고, 마지막에 도련과 재단선을 붙입니다. PDF에는 재단 크기(TrimBox)와 도련 범위(BleedBox)도 기록됩니다.</p>
     <p>페이지 번호는 제본 여백을 뺀 영역을 기준으로, 가장자리에서 지정한 거리만큼 떨어진 곳에 넣습니다.</p>
   </div>
 </main>
@@ -471,7 +538,28 @@
     edgeMm: Math.max(0, numVal("numEdge", 10)),
     mirror: $("numMirror").checked,
   });
-  const settings = () => ({ marginMm: getMargin(), mode: getMode(), scaleMode: getScaleMode(), manualPct: getManualPct(), num: getNumbering() });
+  const TRIM_SIZES = {
+    a4: [210, 297], a5: [148, 210], b5: [182, 257], b6: [128, 182],
+    shinguk: [152, 225], crown: [176, 248], "46": [127, 188],
+  };
+  const getPrint = () => {
+    const key = $("trimSize").value;
+    let trim = null;
+    if (key === "custom") {
+      const w = numVal("trimW", 0), h = numVal("trimH", 0);
+      if (w >= 20 && h >= 20) trim = [w, h];
+    } else if (TRIM_SIZES[key]) trim = TRIM_SIZES[key];
+    return {
+      trim,                                   // 완성(재단) 크기 mm, null이면 원본 그대로
+      bleedMm: Math.min(20, Math.max(0, numVal("bleed", 0))),
+      bleedFill: document.querySelector('input[name="bleedFill"]:checked').value,   // "white" | "scale"
+      marks: $("cropMarks").checked,
+    };
+  };
+  const settings = () => ({ marginMm: getMargin(), mode: getMode(), scaleMode: getScaleMode(), manualPct: getManualPct(), num: getNumbering(), print: getPrint() });
+  const SLUG_MM = 10;   // 재단선을 그릴 바깥 공간
+  // 도련·재단선 때문에 페이지 둘레에 더해지는 폭(pt)
+  const outerPad = (pr) => (pr.bleedMm + (pr.marks ? SLUG_MM : 0)) * MM_TO_PT;
 
   // ---------- 페이지 번호 ----------
   // 페이지 번호에 해당하는 표시 문자열 (번호를 넣지 않는 페이지면 null)
@@ -559,16 +647,112 @@
 
   // ---------- PDF 처리 ----------
   async function addGutter(bytes, opts) {
-    const { PDFDocument, PDFName, PDFArray, PDFDict, pushGraphicsState, popGraphicsState, concatTransformationMatrix, StandardFonts, rgb, degrees } = PDFLib;
+    const { PDFDocument, PDFName, PDFArray, PDFDict, pushGraphicsState, popGraphicsState, concatTransformationMatrix, rectangle, clip, endPath, StandardFonts, rgb, cmyk, degrees } = PDFLib;
     const doc = await PDFDocument.load(bytes);
     const pages = doc.getPages();
     const font = opts.num.on ? await doc.embedFont(StandardFonts.Helvetica) : null;
 
+    const pr = opts.print;
+    const boxWork = !!pr.trim || pr.bleedMm > 0 || pr.marks;
+
     pages.forEach((page, i) => {
+      if (boxWork) normalizePage(page);
+      if (pr.trim) resizeToTrim(page);
       transformPage(page, i + 1);
       if (font) drawNumber(page, i + 1);
+      if (pr.bleedMm > 0 || pr.marks) addBleed(page);
     });
     return doc.save();
+
+    // 내용 전체에 변환 행렬을 씌움 (주석 위치도 함께)
+    // clipRect: [x, y, w, h] 이 범위 밖은 잘라냄 (페이지 좌표)
+    function wrapWith(page, [a, b, c, d, e, f], clipRect) {
+      page.node.normalize();
+      const clipOps = clipRect ? [rectangle(...clipRect), clip(), endPath()] : [];
+      const start = doc.context.register(page.createContentStream(pushGraphicsState(), ...clipOps, concatTransformationMatrix(a, b, c, d, e, f)));
+      const end = doc.context.register(page.createContentStream(popGraphicsState()));
+      page.node.wrapContentStreams(start, end);
+      // 이후에 그리는 것(페이지 번호, 재단선)은 이 변환 바깥에 새로 그려지도록
+      page.contentStream = undefined;
+      page.contentStreamRef = undefined;
+      const annots = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
+      if (!annots) return;
+      for (let j = 0; j < annots.size(); j++) {
+        const an = annots.lookupMaybe(j, PDFDict);
+        const rect = an && an.lookupMaybe(PDFName.of("Rect"), PDFArray);
+        if (!rect) continue;
+        const r = rect.asRectangle();
+        const pts = [[r.x, r.y], [r.x + r.width, r.y], [r.x, r.y + r.height], [r.x + r.width, r.y + r.height]]
+          .map(([x, y]) => [a * x + c * y + e, b * x + d * y + f]);
+        const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+        an.set(PDFName.of("Rect"), doc.context.obj([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]));
+      }
+    }
+
+    function setBoxes(page, w, h) {
+      page.setMediaBox(0, 0, w, h);
+      page.setCropBox(0, 0, w, h);
+      ["TrimBox", "BleedBox", "ArtBox"].forEach(k => page.node.delete(PDFName.of(k)));
+    }
+
+    // 회전(/Rotate)과 상자 원점을 내용에 반영해서, 보이는 그대로 원점 (0,0)인 페이지로 만듦
+    function normalizePage(page) {
+      const box = page.getCropBox();
+      const rot = ((page.getRotation().angle % 360) + 360) % 360;
+      const { x: x0, y: y0, width: w, height: h } = box;
+      const m = rot === 90 ? [0, -1, 1, 0, -y0, x0 + w]
+              : rot === 180 ? [-1, 0, 0, -1, x0 + w, y0 + h]
+              : rot === 270 ? [0, 1, -1, 0, y0 + h, -x0]
+              : [1, 0, 0, 1, -x0, -y0];
+      const isId = rot === 0 && !x0 && !y0;
+      if (!isId) wrapWith(page, m);
+      page.setRotation(degrees(0));
+      setBoxes(page, rot === 90 || rot === 270 ? h : w, rot === 90 || rot === 270 ? w : h);
+    }
+
+    // 완성 크기로 맞춤: 비율 유지, 가운데 정렬 (가로 페이지는 가로 방향 크기로)
+    function resizeToTrim(page) {
+      const { width: W, height: H } = page.getMediaBox();
+      let [tw, th] = pr.trim.map(v => v * MM_TO_PT);
+      if ((W > H) !== (tw > th)) [tw, th] = [th, tw];
+      const s = Math.min(tw / W, th / H);
+      wrapWith(page, [s, 0, 0, s, (tw - W * s) / 2, (th - H * s) / 2]);
+      setBoxes(page, tw, th);
+    }
+
+    // 도련(재단 여백)과 재단선을 붙여 출력 크기를 키움
+    function addBleed(page) {
+      const { width: W, height: H } = page.getMediaBox();
+      const b = pr.bleedMm * MM_TO_PT, o = outerPad(pr);
+      if (pr.bleedFill === "scale" && b > 0) {
+        // 내용을 살짝 키워 도련까지 채움 (재단선 기준 가운데)
+        const s = Math.max((W + 2 * b) / W, (H + 2 * b) / H);
+        wrapWith(page, [s, 0, 0, s, o + W / 2 * (1 - s), o + H / 2 * (1 - s)], [o - b, o - b, W + 2 * b, H + 2 * b]);
+      } else {
+        // 재단 크기 밖으로 밀려난 내용(제본 여백 이동 등)은 잘라서 도련을 깨끗하게
+        wrapWith(page, [1, 0, 0, 1, o, o], [o, o, W, H]);
+      }
+      const PW = W + 2 * o, PH = H + 2 * o;
+      page.setMediaBox(0, 0, PW, PH);
+      page.setCropBox(0, 0, PW, PH);
+      page.setTrimBox(o, o, W, H);
+      page.setBleedBox(o - b, o - b, W + 2 * b, H + 2 * b);
+      if (pr.marks) drawCropMarks(page, o, b, W, H);
+    }
+
+    // 모서리 재단선 (모든 판에 찍히도록 C·M·Y·K 100%)
+    function drawCropMarks(page, o, b, W, H) {
+      const gap = 1 * MM_TO_PT;
+      const opt = { thickness: 0.25, color: cmyk(1, 1, 1, 1) };
+      const xs = [o, o + W], ys = [o, o + H];
+      const PW = W + 2 * o, PH = H + 2 * o;
+      xs.forEach((x, i) => ys.forEach((y, j) => {
+        const hx1 = i === 0 ? gap : x + b + gap, hx2 = i === 0 ? x - b - gap : PW - gap;
+        page.drawLine({ start: { x: hx1, y }, end: { x: hx2, y }, ...opt });
+        const vy1 = j === 0 ? gap : y + b + gap, vy2 = j === 0 ? y - b - gap : PH - gap;
+        page.drawLine({ start: { x, y: vy1 }, end: { x, y: vy2 }, ...opt });
+      }));
+    }
 
     function drawNumber(page, pageNo) {
       const text = numberText(pageNo, pages.length, opts.num);
@@ -587,23 +771,7 @@
       const box = page.getCropBox();
       const [a, b, c, d, e, f] = matrixFor(pageNo, box, page.getRotation().angle, opts);
       if (a === 1 && !e && !f) return;
-
-      page.node.normalize();
-      const start = doc.context.register(page.createContentStream(pushGraphicsState(), concatTransformationMatrix(a, b, c, d, e, f)));
-      const end = doc.context.register(page.createContentStream(popGraphicsState()));
-      page.node.wrapContentStreams(start, end);
-
-      const annots = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
-      if (!annots) return;
-      for (let j = 0; j < annots.size(); j++) {
-        const an = annots.lookupMaybe(j, PDFDict);
-        const rect = an && an.lookupMaybe(PDFName.of("Rect"), PDFArray);
-        if (!rect) continue;
-        const r = rect.asRectangle();
-        an.set(PDFName.of("Rect"), doc.context.obj([
-          a * r.x + e, d * r.y + f, a * (r.x + r.width) + e, d * (r.y + r.height) + f,
-        ]));
-      }
+      wrapWith(page, [a, b, c, d, e, f]);
     }
   }
 
@@ -674,20 +842,27 @@
     $("caption").textContent = captionText(opts);
   }
 
-  function makeBand(pageNo, opts, visW, visH) {
+  // o: 도련·재단선 때문에 늘어난 둘레 폭(pt). 여백 표시는 재단선 안쪽 기준
+  function makeBand(pageNo, opts, visW, visH, o = 0) {
     const band = document.createElement("div");
     band.className = "band";
     const m = opts.marginMm * MM_TO_PT;
     const [dx, dy] = bindDir(pageNo, opts.mode);
+    const X = (v) => (v / visW * 100) + "%", Y = (v) => (v / visH * 100) + "%";
     if (dy) {
-      Object.assign(band.style, { left: 0, right: 0, top: 0, height: (m / visH * 100) + "%", borderBottomWidth: "1px" });
+      Object.assign(band.style, { left: X(o), right: X(o), top: Y(o), height: Y(m), borderBottomWidth: "1px" });
     } else {
-      const pct = (m / visW * 100) + "%";
       Object.assign(band.style, dx > 0
-        ? { top: 0, bottom: 0, left: 0, width: pct, borderRightWidth: "1px" }
-        : { top: 0, bottom: 0, right: 0, width: pct, borderLeftWidth: "1px" });
+        ? { top: Y(o), bottom: Y(o), left: X(o), width: X(m), borderRightWidth: "1px" }
+        : { top: Y(o), bottom: Y(o), right: X(o), width: X(m), borderLeftWidth: "1px" });
     }
     return band;
+  }
+  function makeTrimLine(visW, visH, o) {
+    const t = document.createElement("div");
+    t.className = "trimline";
+    Object.assign(t.style, { left: (o / visW * 100) + "%", right: (o / visW * 100) + "%", top: (o / visH * 100) + "%", bottom: (o / visH * 100) + "%" });
+    return t;
   }
 
   function captionText(opts) {
@@ -742,7 +917,9 @@
         const canvas = document.createElement("canvas");
         canvas.width = Math.floor(vp.width * dpr); canvas.height = Math.floor(vp.height * dpr);
         sheet.appendChild(canvas);
-        sheet.appendChild(makeBand(n, opts, vp1.width, vp1.height));
+        const o = state.view === "after" ? outerPad(opts.print) : 0;
+        sheet.appendChild(makeBand(n, opts, vp1.width, vp1.height, o));
+        if (o > 0) sheet.appendChild(makeTrimLine(vp1.width, vp1.height, o));
         jobs.push(pages[i].render({
           canvasContext: canvas.getContext("2d"),
           viewport: pages[i].getViewport({ scale: fit * dpr }),
@@ -803,9 +980,29 @@
     $("numbering").hidden = !$("numOn").checked;
     $("colorHint").hidden = !needsGs();
     $("mirrorField").hidden = !getMode().startsWith("duplex");
+    $("customTrim").hidden = $("trimSize").value !== "custom";
+    $("bleedFillField").hidden = !(numVal("bleed", 0) > 0);
+    updatePrintSummary();
     if (state.file) rebuild(); else renderDemo();
   }
   ["input", "change"].forEach(ev => $("numSet").addEventListener(ev, onChange));
+  ["input", "change"].forEach(ev => $("printSet").addEventListener(ev, onChange));
+
+  function updatePrintSummary() {
+    const pr = getPrint();
+    const el = $("printSummary");
+    if (!pr.trim && !pr.bleedMm && !pr.marks) { el.textContent = ""; return; }
+    let base = pr.trim;
+    if (!base) {
+      const f = state.files.find(x => x.kind === "pdf");
+      if (f) base = f.size.map(v => Math.round(v / MM_TO_PT));
+    }
+    const pad = pr.bleedMm + (pr.marks ? SLUG_MM : 0);
+    if (!base) { el.textContent = `출력 크기: 원본 크기에서 사방 ${pad}mm씩 커집니다`; return; }
+    const r = (v) => Math.round(v * 10) / 10;
+    el.textContent = `출력 크기 ${r(base[0] + 2 * pad)} × ${r(base[1] + 2 * pad)}mm`
+      + ` (재단 크기 ${r(base[0])} × ${r(base[1])}mm${pr.bleedMm ? ` + 도련 ${pr.bleedMm}mm` : ""}${pr.marks ? " + 재단선 공간" : ""})`;
+  }
   link("marginRange", "marginNum", 30);
   link("scaleRange", "scaleNum", 100);
   document.querySelectorAll('input[name="mode"], input[name="scale"]').forEach(r => r.addEventListener("change", () => {
@@ -919,8 +1116,15 @@
     const { PDFDocument } = PDFLib;
     const out = await PDFDocument.create();
     for (const [k, item] of files.entries()) {
-      // 새 단원 시작: PDF 파일마다, 그리고 연속된 이미지 묶음의 첫 장
-      const newSection = item.kind === "pdf" || (k > 0 && files[k - 1].kind === "pdf");
+      // 사용자가 넣은 빈 페이지: 바로 앞 쪽과 같은 크기로
+      if (item.kind === "blank") {
+        const [bw, bh] = blankPageSize(out, k);
+        for (let n = 0; n < item.count; n++) out.addPage([bw, bh]);
+        continue;
+      }
+      // 새 단원 시작: PDF 파일마다, 그리고 연속된 이미지 묶음의 첫 장 (빈 페이지는 건너뛰고 판단)
+      const prev = files.slice(0, k).reverse().find(f => f.kind !== "blank");
+      const newSection = item.kind === "pdf" || (prev && prev.kind === "pdf");
       if (k > 0 && newSection && $("oddStart").checked && out.getPageCount() % 2 === 1) {
         const last = out.getPage(out.getPageCount() - 1);
         const { width, height } = last.getSize();
@@ -941,14 +1145,37 @@
     return out.save();
   }
 
+  // 빈 페이지 크기: 앞 쪽이 있으면 그 크기, 맨 앞이면 뒤에 오는 파일 크기, 둘 다 없으면 A4
+  function blankPageSize(out, k) {
+    if (out.getPageCount()) {
+      const { width, height } = out.getPage(out.getPageCount() - 1).getSize();
+      return [width, height];
+    }
+    const next = state.files.slice(k + 1).find(f => f.kind !== "blank");
+    if (next && next.kind === "pdf") return next.size;
+    if (next && next.kind === "image") return imagePageSize(next);
+    return PAPER.a4;
+  }
+
+  function addBlank(at) {
+    const item = { id: ++fileSeq, kind: "blank", count: 1, pages: 1 };
+    state.files.splice(at, 0, item);
+    filesChanged().then(() => {
+      const input = $("fileList").querySelector(`li[data-id="${item.id}"] .bcount`);
+      if (input) { input.focus(); input.select(); }
+    });
+  }
+
   let mergeToken = 0;
   async function filesChanged() {
     const token = ++mergeToken;
     renderFileList();
-    if (!state.files.length) {
+    const real = state.files.filter(f => f.kind !== "blank");
+    if (!real.length) {
       if (state.srcDoc) state.srcDoc.destroy();
       if (state.outDoc) state.outDoc.destroy();
       Object.assign(state, { file: null, srcBytes: null, outBytes: null, srcDoc: null, outDoc: null, spread: 0 });
+      $("fileSummary").textContent = state.files.length ? "PDF나 이미지를 하나 이상 넣어 주세요." : "";
       $("run").disabled = true;
       setStatus("");
       renderDemo();
@@ -960,10 +1187,12 @@
       const srcDoc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
       if (token !== mergeToken) { srcDoc.destroy(); return; }
       if (state.srcDoc) state.srcDoc.destroy();
-      Object.assign(state, { file: state.files[0].file, srcBytes: bytes, srcDoc });
+      Object.assign(state, { file: real[0].file, srcBytes: bytes, srcDoc });
       $("run").disabled = false;
-      $("fileSummary").textContent = state.files.length > 1
-        ? `${state.files.length}개 파일, 합쳐서 ${srcDoc.numPages}쪽` : `${srcDoc.numPages}쪽`;
+      const blanks = state.files.filter(f => f.kind === "blank").reduce((a, f) => a + f.count, 0);
+      $("fileSummary").textContent = (real.length > 1 ? `${real.length}개 파일` : "")
+        + (blanks ? `${real.length > 1 ? ", " : ""}빈 페이지 ${blanks}장` : "")
+        + (real.length > 1 || blanks ? `, 합쳐서 ${srcDoc.numPages}쪽` : `${srcDoc.numPages}쪽`);
       await rebuild();
     } catch (err) {
       showError(err);
@@ -973,6 +1202,7 @@
   function escapeHtml(t) { return t.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
   function renderFileList() {
+    updatePrintSummary();
     const ol = $("fileList");
     $("filebox").hidden = !state.files.length;
     $("oddStartField").hidden = state.files.length < 2;
@@ -983,17 +1213,27 @@
     ol.innerHTML = "";
     state.files.forEach((item, i) => {
       const li = document.createElement("li");
-      li.draggable = true;
       li.dataset.id = item.id;
+      const label = item.kind === "blank" ? "빈 페이지" : escapeHtml(item.file.name);
+      const thumb = item.kind === "image" ? `<img class="thumb" src="${item.thumb}" alt="">`
+        : item.kind === "blank" ? `<span class="thumb blank" aria-hidden="true"></span>`
+        : `<span class="thumb pdf" aria-hidden="true">PDF</span>`;
+      const pages = item.kind === "blank"
+        ? `<label class="fpages bpages"><input type="number" class="bcount" min="1" max="200" value="${item.count}" aria-label="빈 페이지 장수">장</label>`
+        : `<span class="fpages">${item.kind === "image" ? "이미지" : item.pages + "쪽"}</span>`;
+      if (item.kind === "blank") li.className = "blank-row";
       li.innerHTML = `
         <span class="grip" aria-hidden="true">⋮⋮</span>
         <span class="idx">${i + 1}</span>
-        ${item.kind === "image" ? `<img class="thumb" src="${item.thumb}" alt="">` : `<span class="thumb pdf" aria-hidden="true">PDF</span>`}
-        <span class="fname" title="${escapeHtml(item.file.name)}">${escapeHtml(item.file.name)}</span>
-        <span class="fpages">${item.kind === "image" ? "이미지" : item.pages + "쪽"}</span>
-        <button type="button" data-act="up" aria-label="${escapeHtml(item.file.name)} 위로" ${i === 0 ? "disabled" : ""}>↑</button>
-        <button type="button" data-act="down" aria-label="${escapeHtml(item.file.name)} 아래로" ${i === state.files.length - 1 ? "disabled" : ""}>↓</button>
-        <button type="button" data-act="remove" aria-label="${escapeHtml(item.file.name)} 빼기">✕</button>`;
+        ${thumb}
+        <span class="fname" title="${label}">${label}</span>
+        ${pages}
+        <span class="actions">
+        <button type="button" data-act="blank" aria-label="${label} 다음에 빈 페이지 넣기" title="다음에 빈 페이지 넣기">＋</button>
+        <button type="button" data-act="up" aria-label="${label} 위로" ${i === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" data-act="down" aria-label="${label} 아래로" ${i === state.files.length - 1 ? "disabled" : ""}>↓</button>
+        <button type="button" data-act="remove" aria-label="${label} 빼기">✕</button>
+        </span>`;
       ol.appendChild(li);
     });
   }
@@ -1012,6 +1252,7 @@
     const i = indexOfId(btn.closest("li").dataset.id);
     const act = btn.dataset.act;
     let changed = false;
+    if (act === "blank") { addBlank(i + 1); return; }
     if (act === "up") changed = moveFile(i, i - 1);
     if (act === "down") changed = moveFile(i, i + 1);
     if (act === "remove") { revokeThumb(state.files[i]); state.files.splice(i, 1); changed = true; }
@@ -1030,6 +1271,11 @@
   let dragId = null;
   const list = $("fileList");
   const clearMarks = () => list.querySelectorAll("li").forEach(li => li.classList.remove("drop-before", "drop-after", "dragging"));
+  // 손잡이를 잡았을 때만 끌 수 있게 (장수 입력칸을 편하게 쓰도록)
+  list.addEventListener("pointerdown", (e) => {
+    const li = e.target.closest("li");
+    if (li) li.draggable = !!e.target.closest(".grip");
+  });
   list.addEventListener("dragstart", (e) => {
     const li = e.target.closest("li");
     if (!li) return;
@@ -1063,6 +1309,38 @@
   });
   list.addEventListener("dragend", () => { clearMarks(); dragId = null; });
 
+  let countTimer;
+  list.addEventListener("input", (e) => {
+    if (!e.target.classList.contains("bcount")) return;
+    const item = state.files[indexOfId(e.target.closest("li").dataset.id)];
+    const v = parseInt(e.target.value, 10);
+    if (!Number.isFinite(v) || v < 1) return;
+    item.count = Math.min(200, v);
+    clearTimeout(countTimer);
+    // 입력 중에는 목록을 다시 그리지 않고 결과만 갱신
+    countTimer = setTimeout(async () => {
+      const real = state.files.filter(f => f.kind !== "blank");
+      if (!real.length) return;
+      const token = ++mergeToken;
+      try {
+        const bytes = await mergeFiles();
+        const srcDoc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+        if (token !== mergeToken) { srcDoc.destroy(); return; }
+        if (state.srcDoc) state.srcDoc.destroy();
+        Object.assign(state, { srcBytes: bytes, srcDoc });
+        const blanks = state.files.filter(f => f.kind === "blank").reduce((a, f) => a + f.count, 0);
+        $("fileSummary").textContent = (real.length > 1 ? `${real.length}개 파일, ` : "") + `빈 페이지 ${blanks}장, 합쳐서 ${srcDoc.numPages}쪽`;
+        await rebuild();
+      } catch (err) { showError(err); }
+    }, 350);
+  });
+  list.addEventListener("change", (e) => {
+    if (e.target.classList.contains("bcount")) {
+      const item = state.files[indexOfId(e.target.closest("li").dataset.id)];
+      e.target.value = item.count;
+    }
+  });
+  $("addBlank").addEventListener("click", () => addBlank(state.files.length));
   $("oddStart").addEventListener("change", () => filesChanged());
   $("clearFiles").addEventListener("click", () => { state.files.forEach(revokeThumb); state.files = []; filesChanged(); });
   function revokeThumb(item) { if (item && item.thumb) URL.revokeObjectURL(item.thumb); }
