@@ -275,6 +275,18 @@
   .pospick .mid { grid-column: 1 / 4; grid-row: 2; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 14px; }
   .pospick .mid span { height: 3px; background: var(--line); border-radius: 2px; }
   .pospick .mid span:nth-child(3) { width: 60%; }
+  .pickcol { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  .pospick9 { grid-template-rows: 1fr 1fr 1fr; }
+  .pospick9 label { height: auto; }
+  .pospick.off { opacity: .35; pointer-events: none; }
+  #stampText {
+    width: 100%; min-height: 3.2em; resize: vertical; font: inherit; color: var(--ink);
+    background: var(--sheet); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px;
+  }
+  .field input[type="color"] { width: 40px; height: 30px; padding: 0 2px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); }
+  .files .stampchk { display: none; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); cursor: pointer; flex: none; }
+  .files .stampchk input { accent-color: var(--cloth); }
+  .filebox.stamp-on .stampchk { display: inline-flex; }
   .numfields { flex: 1; min-width: 260px; display: grid; gap: 12px; align-content: start; }
   .field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 15px; }
   .field[hidden] { display: none; }
@@ -456,6 +468,80 @@
     </div>
   </fieldset>
 
+  <fieldset id="stampSet">
+    <label class="switch"><input type="checkbox" id="stampOn">문구 넣기 (저작권 표시 등)</label>
+    <div class="numbering" id="stamping" hidden>
+      <div class="pickcol">
+        <div class="pospick pospick9" id="stampPick" role="radiogroup" aria-label="문구 위치">
+          <label title="왼쪽 위"><input type="radio" name="stamppos" value="tl" aria-label="왼쪽 위"></label>
+          <label title="가운데 위"><input type="radio" name="stamppos" value="tc" aria-label="가운데 위"></label>
+          <label title="오른쪽 위"><input type="radio" name="stamppos" value="tr" aria-label="오른쪽 위"></label>
+          <label title="왼쪽 가운데"><input type="radio" name="stamppos" value="ml" aria-label="왼쪽 가운데"></label>
+          <label title="한가운데"><input type="radio" name="stamppos" value="mc" aria-label="한가운데"></label>
+          <label title="오른쪽 가운데"><input type="radio" name="stamppos" value="mr" aria-label="오른쪽 가운데"></label>
+          <label title="왼쪽 아래"><input type="radio" name="stamppos" value="bl" aria-label="왼쪽 아래" checked></label>
+          <label title="가운데 아래"><input type="radio" name="stamppos" value="bc" aria-label="가운데 아래"></label>
+          <label title="오른쪽 아래"><input type="radio" name="stamppos" value="br" aria-label="오른쪽 아래"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="stampCustom">위치 직접 지정</label>
+      </div>
+      <div class="numfields">
+        <div class="field">
+          <textarea id="stampText" rows="2" aria-label="넣을 문구">© 2026 </textarea>
+        </div>
+        <div class="field" id="stampXY" hidden>
+          <span class="name">위치</span>
+          왼쪽에서 <input type="number" id="stampX" min="0" max="1000" step="0.5" value="15" aria-label="왼쪽에서(mm)">mm,
+          위에서 <input type="number" id="stampY" min="0" max="1000" step="0.5" value="280" aria-label="위에서(mm)">mm
+        </div>
+        <div class="field" id="stampEdgeField">
+          <span class="name">가장자리 거리</span>
+          <input type="number" id="stampEdge" min="0" max="80" step="0.5" value="8" aria-label="가장자리 거리(mm)">mm
+        </div>
+        <div class="field">
+          <span class="name">글꼴</span>
+          <select id="stampFont" aria-label="글꼴">
+            <option value="nanumgothic">나눔고딕 (한글)</option>
+            <option value="nanummyeongjo">나눔명조 (한글)</option>
+            <option value="helvetica">Helvetica (영문)</option>
+            <option value="times">Times (영문)</option>
+            <option value="courier">Courier (영문)</option>
+            <option value="custom">글꼴 파일 선택… (TTF·OTF)</option>
+          </select>
+          <label class="check"><input type="checkbox" id="stampBold">굵게</label>
+          <input type="file" id="stampFontFile" accept=".ttf,.otf,font/ttf,font/otf" hidden>
+          <span class="sub" id="customFontName"></span>
+        </div>
+        <div class="field">
+          <span class="name">글자 크기</span>
+          <input type="number" id="stampSize" min="3" max="200" step="0.5" value="8" aria-label="글자 크기(pt)">pt
+        </div>
+        <div class="field">
+          <span class="name">색 · 투명도</span>
+          <input type="color" id="stampColor" value="#000000" aria-label="글자 색">
+          <input type="number" id="stampOpacity" min="5" max="100" step="5" value="100" aria-label="불투명도(%)">%
+        </div>
+        <div class="field">
+          <span class="name">방향</span>
+          <select id="stampRotate" aria-label="글자 방향">
+            <option value="0">가로</option>
+            <option value="90">세로 (아래에서 위로)</option>
+            <option value="-90">세로 (위에서 아래로)</option>
+          </select>
+        </div>
+        <div class="field" id="stampMirrorField">
+          <label class="check"><input type="checkbox" id="stampMirror" checked>짝수 페이지는 좌우 반대로 (바깥쪽 맞춤)</label>
+        </div>
+        <div class="field">
+          <span class="name">적용 대상</span>
+          <label class="check"><input type="checkbox" id="stampAllPdf" checked>PDF 파일</label>
+          <label class="check"><input type="checkbox" id="stampAllImg" checked>이미지 파일</label>
+        </div>
+        <p class="hint-text">파일마다 따로 고르려면 위 파일 목록의 ‘문구’ 체크박스를 쓰세요. 빈 페이지에는 넣지 않습니다.</p>
+      </div>
+    </div>
+  </fieldset>
+
   <fieldset id="printSet">
     <legend>인쇄소 출력 크기</legend>
     <div class="numfields">
@@ -530,6 +616,7 @@
     <p>미리보기는 화면 크기에 맞춰 그린 것이라 실제 파일보다 흐리게 보일 수 있습니다.</p>
     <p>RGB·CMYK 변환과 글꼴 아웃라인 처리에는 <a href="https://www.ghostscript.com/" target="_blank" rel="noopener">Ghostscript</a>(AGPL-3.0)를 사용합니다. 정밀한 색 관리(ICC 프로파일)가 필요하면 인쇄소 지침을 따르세요.</p>
     <p>완성 크기를 바꾸면 내용을 비율에 맞게 줄이거나 키운 뒤 제본 여백과 페이지 번호를 적용하고, 마지막에 도련과 재단선을 붙입니다. PDF에는 재단 크기(TrimBox)와 도련 범위(BleedBox)도 기록됩니다.</p>
+    <p>문구용 한글 글꼴(나눔고딕·나눔명조, SIL 오픈 폰트 라이선스)은 처음 쓸 때 한 번 내려받습니다. 글꼴 전체가 PDF에 들어가 파일이 1~2MB 커지며, 색상 변환이나 아웃라인 처리를 하면 다시 작아집니다.</p>
     <p>페이지 번호는 제본 여백을 뺀 영역을 기준으로, 가장자리에서 지정한 거리만큼 떨어진 곳에 넣습니다.</p>
   </div>
 </main>
@@ -589,7 +676,112 @@
       marks: $("cropMarks").checked,
     };
   };
-  const settings = () => ({ marginMm: getMargin(), mode: getMode(), scaleMode: getScaleMode(), manualPct: getManualPct(), num: getNumbering(), print: getPrint() });
+  const getStamp = () => ({
+    on: $("stampOn").checked && $("stampText").value.trim() !== "",
+    text: $("stampText").value.replace(/\s+$/, ""),
+    pos: $("stampCustom").checked ? "custom" : document.querySelector('input[name="stamppos"]:checked').value,
+    xMm: numVal("stampX", 0), yMm: numVal("stampY", 0),
+    edgeMm: Math.max(0, numVal("stampEdge", 8)),
+    font: $("stampFont").value, bold: $("stampBold").checked,
+    size: Math.min(200, Math.max(3, numVal("stampSize", 8))),
+    color: $("stampColor").value,
+    opacity: Math.min(100, Math.max(5, numVal("stampOpacity", 100))) / 100,
+    rotate: Number($("stampRotate").value),
+    mirror: $("stampMirror").checked,
+  });
+  const settings = () => ({ marginMm: getMargin(), mode: getMode(), scaleMode: getScaleMode(), manualPct: getManualPct(), num: getNumbering(), print: getPrint(), stamp: getStamp() });
+
+  // ---------- 문구 글꼴 ----------
+  const FONT_URLS = {
+    nanumgothic: ["https://cdn.jsdelivr.net/npm/@expo-google-fonts/nanum-gothic@0.4.0/400Regular/NanumGothic_400Regular.ttf",
+                  "https://cdn.jsdelivr.net/npm/@expo-google-fonts/nanum-gothic@0.4.0/700Bold/NanumGothic_700Bold.ttf"],
+    nanummyeongjo: ["https://cdn.jsdelivr.net/npm/@expo-google-fonts/nanum-myeongjo@0.4.1/400Regular/NanumMyeongjo_400Regular.ttf",
+                    "https://cdn.jsdelivr.net/npm/@expo-google-fonts/nanum-myeongjo@0.4.1/700Bold/NanumMyeongjo_700Bold.ttf"],
+  };
+  const FONTKIT_URL = "https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js";
+  const fontCache = {};
+  function loadScriptOnce(url) {
+    if (!fontCache[url]) fontCache[url] = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = url; sc.onload = res; sc.onerror = () => { delete fontCache[url]; rej(new Error("FONTLOAD:" + url)); };
+      document.head.appendChild(sc);
+    });
+    return fontCache[url];
+  }
+  function fetchFontOnce(url) {
+    if (!fontCache[url]) fontCache[url] = fetch(url).then(r => {
+      if (!r.ok) throw new Error("FONTLOAD:" + url);
+      return r.arrayBuffer();
+    }).catch(err => { delete fontCache[url]; throw err; });
+    return fontCache[url];
+  }
+  // 문서에 문구용 글꼴을 넣음
+  async function embedStampFont(doc, st) {
+    const { StandardFonts } = PDFLib;
+    const std = {
+      helvetica: [StandardFonts.Helvetica, StandardFonts.HelveticaBold],
+      times: [StandardFonts.TimesRoman, StandardFonts.TimesRomanBold],
+      courier: [StandardFonts.Courier, StandardFonts.CourierBold],
+    }[st.font];
+    if (std) {
+      const font = await doc.embedFont(std[st.bold ? 1 : 0]);
+      // 영문 글꼴로 쓸 수 없는 글자(한글 등)가 있으면 알려줌
+      try { st.text.split("\n").forEach(l => font.encodeText(l)); }
+      catch { throw new Error("STAMPFONT"); }
+      return font;
+    }
+    await loadScriptOnce(FONTKIT_URL);
+    doc.registerFontkit(window.fontkit);
+    let bytes;
+    if (st.font === "custom") {
+      if (!state.customFont) throw new Error("STAMPNOFONT");
+      bytes = state.customFont.bytes;
+    } else {
+      bytes = await fetchFontOnce(FONT_URLS[st.font][st.bold ? 1 : 0]);
+    }
+    // 글자만 골라 넣는 방식(subset)은 fontkit 1.1.1에서 일부 글자가 빠지는 문제가 있어 글꼴 전체를 넣음
+    // (CMYK 변환이나 아웃라인 처리를 하면 Ghostscript가 다시 필요한 글자만 남김)
+    const font = await doc.embedFont(bytes, { subset: false });
+    patchFontkit(font);
+    return font;
+  }
+
+  // fontkit 1.1.1은 '내용이 빈 글리프'(공백 등)가 글꼴의 맨 마지막에 있으면 읽다가 오류가 남
+  // (나눔 글꼴이 그렇다). 빈 글리프는 크기 0인 상자를 돌려주도록 고침
+  function patchFontkit(pdfFont) {
+    const fk = pdfFont.embedder && pdfFont.embedder.font;
+    if (!fk || !fk.loca) return;
+    const g = fk.getGlyph(0);
+    const proto = Object.getPrototypeOf(g);
+    if (proto.__emptyGlyphFix) return;
+    const orig = proto._getCBox;
+    const BBox = orig.call(g, true).constructor;
+    proto._getCBox = function (internal) {
+      const o = this._font.loca && this._font.loca.offsets;
+      if (o && o[this.id] === o[this.id + 1]) return Object.freeze(new BBox(0, 0, 0, 0));
+      return orig.call(this, internal);
+    };
+    proto.__emptyGlyphFix = true;
+  }
+
+  // 문구 묶음(여러 줄)의 화면 기준 위치(왼쪽 아래, pt). boxW/boxH는 회전을 반영한 크기
+  function stampPlacement(pageNo, visW, visH, boxW, boxH, opts) {
+    const st = opts.stamp;
+    const flip = st.mirror && opts.mode.startsWith("duplex") && pageNo % 2 === 0;
+    if (st.pos === "custom") {
+      const x = st.xMm * MM_TO_PT, y = st.yMm * MM_TO_PT;
+      return [flip ? visW - x - boxW : x, visH - y - boxH];
+    }
+    let pos = st.pos;
+    if (flip) pos = pos.replace("l", "x").replace("r", "l").replace("x", "r");
+    const m = opts.marginMm * MM_TO_PT, d = st.edgeMm * MM_TO_PT;
+    const [dx, dy] = bindDir(pageNo, opts.mode);
+    const L = dx > 0 ? m : 0, R = dx < 0 ? m : 0, T = dy < 0 ? m : 0;
+    const col = pos[1], row = pos[0];
+    const vx = col === "l" ? L + d : col === "r" ? visW - R - d - boxW : (L + visW - R - boxW) / 2;
+    const vy = row === "t" ? visH - T - d - boxH : row === "b" ? d : (visH - T - boxH) / 2;
+    return [vx, vy];
+  }
   const SLUG_MM = 10;   // 재단선을 그릴 바깥 공간
   // 도련·재단선 때문에 페이지 둘레에 더해지는 폭(pt)
   const outerPad = (pr) => (pr.bleedMm + (pr.marks ? SLUG_MM : 0)) * MM_TO_PT;
@@ -684,6 +876,12 @@
     const doc = await PDFDocument.load(bytes);
     const pages = doc.getPages();
     const font = opts.num.on ? await doc.embedFont(StandardFonts.Helvetica) : null;
+    const owners = state.pageOwner || [];
+    const stampOn = opts.stamp.on && owners.some(id => {
+      const it = state.files.find(f => f.id === id);
+      return it && it.stamp !== false;
+    });
+    const stampFont = stampOn ? await embedStampFont(doc, opts.stamp) : null;
 
     const pr = opts.print;
     const boxWork = !!pr.trim || pr.bleedMm > 0 || pr.marks;
@@ -693,6 +891,7 @@
       if (pr.trim) resizeToTrim(page);
       transformPage(page, i + 1);
       if (font) drawNumber(page, i + 1);
+      if (stampFont) drawStamp(page, i + 1, owners[i]);
       if (pr.bleedMm > 0 || pr.marks) addBleed(page);
     });
     return doc.save();
@@ -798,6 +997,39 @@
       const [vx, vy] = numberPlacement(pageNo, visW, visH, font.widthOfTextAtSize(text, size), opts);
       const [x, y] = visualPointToUser(vx, vy, box, rot);
       page.drawText(text, { x, y, size, font, color: rgb(0, 0, 0), rotate: degrees(rot) });
+    }
+
+    function drawStamp(page, pageNo, ownerId) {
+      const item = state.files.find(f => f.id === ownerId);
+      if (!item || item.stamp === false) return;
+      const st = opts.stamp;
+      const box = page.getCropBox();
+      const prot = ((page.getRotation().angle % 360) + 360) % 360;
+      const visW = prot === 90 || prot === 270 ? box.height : box.width;
+      const visH = prot === 90 || prot === 270 ? box.width : box.height;
+      const size = st.size, lh = size * 1.3;
+      const lines = st.text.split("\n");
+      const widths = lines.map(l => stampFont.widthOfTextAtSize(l, size));
+      const bw = Math.max(...widths, 1), bh = lines.length * lh;
+      const [W, H] = st.rotate ? [bh, bw] : [bw, bh];
+      const [vx, vy] = stampPlacement(pageNo, visW, visH, W, H, opts);
+      const asc = stampFont.heightAtSize(size, { descender: false });
+      const col = st.pos === "custom" ? "l" : (st.pos[1] === "c" ? "c" : st.pos[1]);
+      const flip = st.mirror && opts.mode.startsWith("duplex") && pageNo % 2 === 0;
+      const align = st.pos === "custom" ? (flip ? "r" : "l") : (flip && col !== "c" ? (col === "l" ? "r" : "l") : col);
+      const hex = st.color.replace("#", "");
+      const color = rgb(parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255);
+      lines.forEach((line, i) => {
+        if (!line) return;
+        const u = align === "l" ? 0 : align === "r" ? bw - widths[i] : (bw - widths[i]) / 2;
+        const v = bh - i * lh - (lh - size) / 2 - asc;
+        // 문구 안의 좌표(u: 글줄 방향, v: 위쪽) → 화면 좌표
+        const [px, py] = st.rotate === 90 ? [vx + bh - v, vy + u]
+                       : st.rotate === -90 ? [vx + v, vy + bw - u]
+                       : [vx + u, vy + v];
+        const [x, y] = visualPointToUser(px, py, box, prot);
+        page.drawText(line, { x, y, size, font: stampFont, color, opacity: st.opacity, rotate: degrees(prot + st.rotate) });
+      });
     }
 
     function transformPage(page, pageNo) {
@@ -1070,6 +1302,14 @@
     $("colorHint").hidden = !needsGs(); $("qualityField").hidden = !needsGs();
     $("mirrorField").hidden = !getMode().startsWith("duplex");
     $("customTrim").hidden = $("trimSize").value !== "custom";
+    $("stamping").hidden = !$("stampOn").checked;
+    $("filebox").classList.toggle("stamp-on", $("stampOn").checked);
+    $("stampXY").hidden = !$("stampCustom").checked;
+    $("stampEdgeField").hidden = $("stampCustom").checked;
+    $("stampPick").classList.toggle("off", $("stampCustom").checked);
+    $("stampMirrorField").hidden = !getMode().startsWith("duplex");
+    $("stampBold").disabled = $("stampFont").value === "custom";
+    $("customFontName").textContent = $("stampFont").value === "custom" && state.customFont ? state.customFont.name + " (바꾸려면 누르세요)" : "";
     $("bleedFillField").hidden = !(numVal("bleed", 0) > 0);
     updatePrintSummary();
     updateDpiBadges();
@@ -1077,6 +1317,27 @@
   }
   ["input", "change"].forEach(ev => $("numSet").addEventListener(ev, onChange));
   ["input", "change"].forEach(ev => $("printSet").addEventListener(ev, onChange));
+  ["input", "change"].forEach(ev => $("stampSet").addEventListener(ev, (e) => {
+    if (e.target.id === "stampAllPdf" || e.target.id === "stampAllImg") {
+      if (e.type !== "change") return;
+      setStampForKind(e.target.id === "stampAllPdf" ? "pdf" : "image", e.target.checked);
+    }
+    if (e.target.id === "stampFontFile") return;
+    if (e.target.id === "stampFont" && e.type === "change" && e.target.value === "custom" && !state.customFont) {
+      $("stampFontFile").click();
+    }
+    onChange();
+  }));
+  $("stampFontFile").addEventListener("change", async () => {
+    const f = $("stampFontFile").files[0];
+    if (!f) return;
+    state.customFont = { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) };
+    $("stampFont").value = "custom";
+    $("customFontName").textContent = f.name;
+    $("stampFontFile").value = "";
+    onChange();
+  });
+  $("customFontName").addEventListener("click", () => $("stampFontFile").click());
 
   function updatePrintSummary() {
     const pr = getPrint();
@@ -1128,7 +1389,11 @@
     const failed = [];
     for (const f of files) {
       try {
-        state.files.push(isPdf(f) ? await loadPdfItem(f) : await loadImageItem(f));
+        const item = isPdf(f) ? await loadPdfItem(f) : await loadImageItem(f);
+        // 일괄 체크를 끈 종류의 파일은 새로 넣어도 꺼진 상태로
+        const bulk = $(item.kind === "pdf" ? "stampAllPdf" : "stampAllImg");
+        if (!bulk.disabled && !bulk.checked && !bulk.indeterminate) item.stamp = false;
+        state.files.push(item);
       } catch (err) {
         console.error(err);
         failed.push(f.name + (/encrypt/i.test(String(err)) ? " (암호 걸림)" : isImage(f) ? " (이 브라우저가 지원하지 않는 이미지 형식)" : ""));
@@ -1208,8 +1473,10 @@
   async function mergeFiles() {
     const files = state.files;
     state.fileStarts = [];
+    state.pageOwner = [];   // 각 쪽이 어느 파일에서 왔는지 (빈 페이지는 null)
     if (files.length === 1 && files[0].kind === "pdf") {
       state.fileStarts = [{ page: 1, name: files[0].file.name }];
+      state.pageOwner = Array(files[0].pages).fill(files[0].id);
       return files[0].bytes;
     }
     const { PDFDocument } = PDFLib;
@@ -1218,7 +1485,7 @@
       // 사용자가 넣은 빈 페이지: 바로 앞 쪽과 같은 크기로
       if (item.kind === "blank") {
         const [bw, bh] = blankPageSize(out, k);
-        for (let n = 0; n < item.count; n++) out.addPage([bw, bh]);
+        for (let n = 0; n < item.count; n++) { out.addPage([bw, bh]); state.pageOwner.push(null); }
         continue;
       }
       // 새 단원 시작: PDF 파일마다, 그리고 연속된 이미지 묶음의 첫 장 (빈 페이지는 건너뛰고 판단)
@@ -1228,6 +1495,7 @@
         const last = out.getPage(out.getPageCount() - 1);
         const { width, height } = last.getSize();
         out.addPage([width, height]);
+        state.pageOwner.push(null);
       }
       if (item.kind !== "blank") state.fileStarts.push({ page: out.getPageCount() + 1, name: item.file.name });
       if (item.kind === "image") {
@@ -1236,6 +1504,7 @@
         const s = Math.min(pw / item.w, ph / item.h);
         const w = item.w * s, h = item.h * s, x = (pw - w) / 2, y = (ph - h) / 2;
         const page = out.addPage([pw, ph]);
+        state.pageOwner.push(item.id);
         // 회전 정보가 있는 사진은 원본 그대로 넣고 돌려서 배치
         if (item.rot === -90) page.drawImage(img, { x, y: y + h, width: h, height: w, rotate: PDFLib.degrees(-90) });
         else if (item.rot === 90) page.drawImage(img, { x: x + w, y, width: h, height: w, rotate: PDFLib.degrees(90) });
@@ -1245,7 +1514,7 @@
       }
       const src = await PDFDocument.load(item.bytes);
       const copied = await out.copyPages(src, src.getPageIndices());
-      copied.forEach(p => out.addPage(p));
+      copied.forEach(p => { out.addPage(p); state.pageOwner.push(item.id); });
     }
     return out.save();
   }
@@ -1334,6 +1603,7 @@
         <span class="idx">${i + 1}</span>
         ${thumb}
         <span class="fname" title="${label}">${label}</span>
+        ${item.kind === "blank" ? "" : `<label class="stampchk" title="이 파일에 문구 넣기"><input type="checkbox" class="stampcb" ${item.stamp === false ? "" : "checked"}>문구</label>`}
         ${pages}
         <span class="actions">
         <button type="button" data-act="blank" aria-label="${label} 다음에 빈 페이지 넣기" title="다음에 빈 페이지 넣기">＋</button>
@@ -1344,6 +1614,27 @@
       ol.appendChild(li);
     });
     updateDpiBadges();
+    syncStampBulk();
+  }
+
+  // 'PDF 파일' / '이미지 파일' 일괄 체크 상태를 목록에 맞춤
+  function syncStampBulk() {
+    [["pdf", "stampAllPdf"], ["image", "stampAllImg"]].forEach(([kind, id]) => {
+      const items = state.files.filter(f => f.kind === kind);
+      const on = items.filter(f => f.stamp !== false).length;
+      const cb = $(id);
+      cb.disabled = !items.length;
+      cb.indeterminate = on > 0 && on < items.length;
+      if (items.length) cb.checked = on === items.length;
+    });
+  }
+  function setStampForKind(kind, on) {
+    state.files.filter(f => f.kind === kind).forEach(f => { f.stamp = on; });
+    $("fileList").querySelectorAll("li").forEach(li => {
+      const item = state.files[indexOfId(li.dataset.id)];
+      const cb = li.querySelector(".stampcb");
+      if (cb && item.kind === kind) cb.checked = on;
+    });
   }
 
   // 최종 인쇄 크기 기준의 이미지 해상도(dpi) 추정
@@ -1473,6 +1764,13 @@
     }, 350);
   });
   list.addEventListener("change", (e) => {
+    if (e.target.classList.contains("stampcb")) {
+      const item = state.files[indexOfId(e.target.closest("li").dataset.id)];
+      item.stamp = e.target.checked;
+      syncStampBulk();
+      rebuild();
+      return;
+    }
     if (e.target.classList.contains("bcount")) {
       const item = state.files[indexOfId(e.target.closest("li").dataset.id)];
       e.target.value = item.count;
@@ -1496,6 +1794,18 @@
   function showError(err) {
     console.error(err);
     const s = String(err && (err.name + err.message));
+    if (/STAMPFONT/.test(s)) {
+      setStatus("선택한 영문 글꼴로는 쓸 수 없는 글자(한글 등)가 문구에 있습니다. 나눔고딕이나 나눔명조를 골라 주세요.", true);
+      return;
+    }
+    if (/STAMPNOFONT/.test(s)) {
+      setStatus("글꼴 파일을 먼저 골라 주세요.", true);
+      return;
+    }
+    if (/FONTLOAD:/.test(s)) {
+      setStatus("글꼴을 내려받지 못했습니다. 인터넷 연결을 확인해 주세요.", true);
+      return;
+    }
     if (/COLOR:/.test(s)) {
       setStatus("색상 변환·아웃라인 처리에 실패했습니다. 인터넷 연결을 확인하거나, 두 옵션을 끄고 내려받아 주세요.", true);
       return;
