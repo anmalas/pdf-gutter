@@ -287,6 +287,8 @@
   .files .stampchk { display: none; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); cursor: pointer; flex: none; }
   .files .stampchk input { accent-color: var(--cloth); }
   .filebox.stamp-on .stampchk { display: inline-flex; }
+  .files .gutterchk { display: inline-flex; }
+  .field.targets { margin-top: 12px; }
   .numfields { flex: 1; min-width: 260px; display: grid; gap: 12px; align-content: start; }
   .field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 15px; }
   .field[hidden] { display: none; }
@@ -393,6 +395,12 @@
         <input type="number" id="marginNum" min="0" max="100" step="0.5" value="10" aria-label="제본 여백(mm)">
         <small>mm</small>
       </div>
+    </div>
+    <div class="field targets" id="gutterTargets">
+      <span class="name">적용 대상</span>
+      <label class="check"><input type="checkbox" id="gutterAllPdf" checked>PDF 파일</label>
+      <label class="check"><input type="checkbox" id="gutterAllImg" checked>이미지 파일</label>
+      <span class="sub">파일마다 고르려면 목록의 ‘여백’ 체크박스를 쓰세요.</span>
     </div>
   </fieldset>
 
@@ -877,6 +885,12 @@
     const pages = doc.getPages();
     const font = opts.num.on ? await doc.embedFont(StandardFonts.Helvetica) : null;
     const owners = state.pageOwner || [];
+    // 여백 체크를 끈 파일의 쪽은 제본 여백·축소 없이 (번호·문구 위치도 여백 0 기준)
+    const noGutterOpts = { ...opts, marginMm: 0, scaleMode: "none" };
+    const optsFor = (pageNo) => {
+      const it = state.files.find(f => f.id === owners[pageNo - 1]);
+      return it && it.gutter === false ? noGutterOpts : opts;
+    };
     const stampOn = opts.stamp.on && owners.some(id => {
       const it = state.files.find(f => f.id === id);
       return it && it.stamp !== false;
@@ -994,7 +1008,7 @@
       const visW = rot === 90 || rot === 270 ? box.height : box.width;
       const visH = rot === 90 || rot === 270 ? box.width : box.height;
       const size = opts.num.size;
-      const [vx, vy] = numberPlacement(pageNo, visW, visH, font.widthOfTextAtSize(text, size), opts);
+      const [vx, vy] = numberPlacement(pageNo, visW, visH, font.widthOfTextAtSize(text, size), optsFor(pageNo));
       const [x, y] = visualPointToUser(vx, vy, box, rot);
       page.drawText(text, { x, y, size, font, color: rgb(0, 0, 0), rotate: degrees(rot) });
     }
@@ -1012,7 +1026,7 @@
       const widths = lines.map(l => stampFont.widthOfTextAtSize(l, size));
       const bw = Math.max(...widths, 1), bh = lines.length * lh;
       const [W, H] = st.rotate ? [bh, bw] : [bw, bh];
-      const [vx, vy] = stampPlacement(pageNo, visW, visH, W, H, opts);
+      const [vx, vy] = stampPlacement(pageNo, visW, visH, W, H, optsFor(pageNo));
       const asc = stampFont.heightAtSize(size, { descender: false });
       const col = st.pos === "custom" ? "l" : (st.pos[1] === "c" ? "c" : st.pos[1]);
       const flip = st.mirror && opts.mode.startsWith("duplex") && pageNo % 2 === 0;
@@ -1034,7 +1048,7 @@
 
     function transformPage(page, pageNo) {
       const box = page.getCropBox();
-      const [a, b, c, d, e, f] = matrixFor(pageNo, box, page.getRotation().angle, opts);
+      const [a, b, c, d, e, f] = matrixFor(pageNo, box, page.getRotation().angle, optsFor(pageNo));
       if (a === 1 && !e && !f) return;
       wrapWith(page, [a, b, c, d, e, f]);
     }
@@ -1123,6 +1137,11 @@
     }
     return band;
   }
+  function pageHasGutter(n) {
+    const id = (state.pageOwner || [])[n - 1];
+    const it = state.files.find(f => f.id === id);
+    return !(it && it.gutter === false);
+  }
   function makeTrimLine(visW, visH, o) {
     const t = document.createElement("div");
     t.className = "trimline";
@@ -1183,7 +1202,7 @@
         canvas.width = Math.floor(vp.width * dpr); canvas.height = Math.floor(vp.height * dpr);
         sheet.appendChild(canvas);
         const o = state.view === "after" ? outerPad(opts.print) : 0;
-        sheet.appendChild(makeBand(n, opts, vp1.width, vp1.height, o));
+        if (pageHasGutter(n)) sheet.appendChild(makeBand(n, opts, vp1.width, vp1.height, o));
         if (o > 0) sheet.appendChild(makeTrimLine(vp1.width, vp1.height, o));
         jobs.push(pages[i].render({
           canvasContext: canvas.getContext("2d"),
@@ -1317,6 +1336,11 @@
   }
   ["input", "change"].forEach(ev => $("numSet").addEventListener(ev, onChange));
   ["input", "change"].forEach(ev => $("printSet").addEventListener(ev, onChange));
+  ["gutterAllPdf", "gutterAllImg"].forEach(id => $(id).addEventListener("change", (e) => {
+    setStampForKind(id === "gutterAllPdf" ? "pdf" : "image", e.target.checked, "gutter");
+    syncStampBulk();
+    onChange();
+  }));
   ["input", "change"].forEach(ev => $("stampSet").addEventListener(ev, (e) => {
     if (e.target.id === "stampAllPdf" || e.target.id === "stampAllImg") {
       if (e.type !== "change") return;
@@ -1391,8 +1415,10 @@
       try {
         const item = isPdf(f) ? await loadPdfItem(f) : await loadImageItem(f);
         // 일괄 체크를 끈 종류의 파일은 새로 넣어도 꺼진 상태로
-        const bulk = $(item.kind === "pdf" ? "stampAllPdf" : "stampAllImg");
-        if (!bulk.disabled && !bulk.checked && !bulk.indeterminate) item.stamp = false;
+        for (const prop of ["stamp", "gutter"]) {
+          const bulk = $(BULK[prop][item.kind === "pdf" ? 0 : 1]);
+          if (!bulk.disabled && !bulk.checked && !bulk.indeterminate) item[prop] = false;
+        }
         state.files.push(item);
       } catch (err) {
         console.error(err);
@@ -1603,6 +1629,7 @@
         <span class="idx">${i + 1}</span>
         ${thumb}
         <span class="fname" title="${label}">${label}</span>
+        ${item.kind === "blank" ? "" : `<label class="stampchk gutterchk" title="이 파일에 제본 여백 적용"><input type="checkbox" class="guttercb" ${item.gutter === false ? "" : "checked"}>여백</label>`}
         ${item.kind === "blank" ? "" : `<label class="stampchk" title="이 파일에 문구 넣기"><input type="checkbox" class="stampcb" ${item.stamp === false ? "" : "checked"}>문구</label>`}
         ${pages}
         <span class="actions">
@@ -1618,21 +1645,23 @@
   }
 
   // 'PDF 파일' / '이미지 파일' 일괄 체크 상태를 목록에 맞춤
-  function syncStampBulk() {
-    [["pdf", "stampAllPdf"], ["image", "stampAllImg"]].forEach(([kind, id]) => {
+  const BULK = { stamp: ["stampAllPdf", "stampAllImg", "stampcb"], gutter: ["gutterAllPdf", "gutterAllImg", "guttercb"] };
+  function syncStampBulk() { syncBulk("stamp"); syncBulk("gutter"); }
+  function syncBulk(prop) {
+    [["pdf", BULK[prop][0]], ["image", BULK[prop][1]]].forEach(([kind, id]) => {
       const items = state.files.filter(f => f.kind === kind);
-      const on = items.filter(f => f.stamp !== false).length;
+      const on = items.filter(f => f[prop] !== false).length;
       const cb = $(id);
       cb.disabled = !items.length;
       cb.indeterminate = on > 0 && on < items.length;
       if (items.length) cb.checked = on === items.length;
     });
   }
-  function setStampForKind(kind, on) {
-    state.files.filter(f => f.kind === kind).forEach(f => { f.stamp = on; });
+  function setStampForKind(kind, on, prop = "stamp") {
+    state.files.filter(f => f.kind === kind).forEach(f => { f[prop] = on; });
     $("fileList").querySelectorAll("li").forEach(li => {
       const item = state.files[indexOfId(li.dataset.id)];
-      const cb = li.querySelector(".stampcb");
+      const cb = li.querySelector("." + BULK[prop][2]);
       if (cb && item.kind === kind) cb.checked = on;
     });
   }
@@ -1651,7 +1680,7 @@
     }
     const m = opts.marginMm * MM_TO_PT;
     const along = opts.mode === "top" ? ph : pw;
-    scale *= scaleFor(opts.scaleMode, along, m, opts.manualPct);
+    if (item.gutter !== false) scale *= scaleFor(opts.scaleMode, along, m, opts.manualPct);
     const b = pr.bleedMm * MM_TO_PT;
     if (pr.bleedFill === "scale" && b > 0) scale *= Math.max((pw + 2 * b) / pw, (ph + 2 * b) / ph);
     return 72 / (fit * scale);
@@ -1764,10 +1793,11 @@
     }, 350);
   });
   list.addEventListener("change", (e) => {
-    if (e.target.classList.contains("stampcb")) {
+    if (e.target.classList.contains("stampcb") || e.target.classList.contains("guttercb")) {
       const item = state.files[indexOfId(e.target.closest("li").dataset.id)];
-      item.stamp = e.target.checked;
+      item[e.target.classList.contains("stampcb") ? "stamp" : "gutter"] = e.target.checked;
       syncStampBulk();
+      updateDpiBadges();
       rebuild();
       return;
     }
